@@ -1,0 +1,114 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Glint",
+  "version": "0.1.0",
+  "identifier": "app.glint.player",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://127.0.0.1:43123",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Glint",
+        "width": 1280,
+        "height": 720,
+        "minWidth": 640,
+        "minHeight": 400,
+        "center": true,
+        "resizable": true,
+        "theme": "Dark",
+        "backgroundColor": "#0f0f0f",
+        "dragDropEnabled": true,
+        "zoomHotkeysEnabled": false,
+        "additionalBrowserArgs": "--autoplay-policy=no-user-gesture-required --disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection"
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; media-src 'self' blob: http://127.0.0.1:* http://localhost:*; connect-src 'self' ipc: http://ipc.localhost http://127.0.0.1:* http://localhost:*"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "publisher": "Glint",
+    "category": "Video",
+    "shortDescription": "A fast desktop video player",
+    "longDescription": "Glint plays local videos with YouTube-style controls. The built-in engine supports the formats the system webview can decode. A libmpv backend is planned for everything else.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "fileAssociations": [
+      {
+        "ext": ["mp4", "m4v"],
+        "name": "Glint.MP4",
+        "description": "MP4 video",
+        "mimeType": "video/mp4",
+        "role": "Viewer"
+      },
+      {
+        "ext": ["webm"],
+        "name": "Glint.WebM",
+        "description": "WebM video",
+        "mimeType": "video/webm",
+        "role": "Viewer"
+      },
+      {
+        "ext": ["mkv"],
+        "name": "Glint.Matroska",
+        "description": "Matroska video",
+        "mimeType": "video/x-matroska",
+        "role": "Viewer"
+      },
+      {
+        "ext": ["mov"],
+        "name": "Glint.QuickTime",
+        "description": "QuickTime video",
+        "mimeType": "video/quicktime",
+        "role": "Viewer"
+      },
+      {
+        "ext": ["avi"],
+        "name": "Glint.AVI",
+        "description": "AVI video",
+        "mimeType": "video/x-msvideo",
+        "role": "Viewer"
+      },
+      {
+        "ext": ["ogv", "ogg"],
+        "name": "Glint.Ogg",
+        "description": "Ogg video",
+        "mimeType": "video/ogg",
+        "role": "Viewer"
+      },
+      {
+        "ext": ["mpeg", "mpg"],
+        "name": "Glint.MPEG",
+        "description": "MPEG video",
+        "mimeType": "video/mpeg",
+        "role": "Viewer"
+      }
+    ],
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper",
+        "silent": true
+      },
+      "nsis": {
+        "installMode": "currentUser",
+        "displayLanguageSelector": false,
+        "languages": ["English"]
+      },
+      "wix": {
+        "language": "en-US"
+      }
+    }
+  }
+}

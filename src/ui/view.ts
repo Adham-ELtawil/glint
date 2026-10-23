@@ -1,0 +1,1028 @@
+import { chapterAt } from "../player/chapters";
+import { PLAYBACK_RATES, formatRate } from "../player/rates";
+import { isTypingTarget, mapShortcut, type ShortcutAction } from "../player/shortcuts";
+import type { FlashEffect, PlayerState } from "../player/state";
+import { formatPair, formatTime } from "../player/time";
+import { icon, type IconName } from "./icons";
+
+export interface ViewActions {
+  openVideo(): void;
+  openSubtitle(): void;
+  quit(): void;
+  togglePlay(): void;
+  seekRatio(ratio: number): void;
+  setVolume(volume: number): void;
+  toggleMute(): void;
+  toggleCaptions(): void;
+  selectTrack(id: string | null): void;
+  setRate(rate: number): void;
+  next(): void;
+  toggleFullscreen(): void;
+  toggleTheater(): void;
+  replay(): void;
+  startOver(): void;
+  shortcut(action: ShortcutAction): void;
+  filesDropped(files: File[]): void;
+}
+
+type SettingsPage = "main" | "speed" | "subtitles";
+type MenuName = "file" | "playback" | "view";
+
+export class PlayerView {
+  readonly root: HTMLElement;
+  videoSlot!: HTMLElement;
+  private state: PlayerState | null = null;
+  private settingsPage: SettingsPage = "main";
+  private settingsOpen = false;
+  private menuName: MenuName | null = null;
+  private scrubbing = false;
+  private resumeTimer = 0;
+  private hideTimer = 0;
+  private pointerX = Number.NaN;
+  private pointerY = Number.NaN;
+  private suppressPointerUntil = 0;
+
+  private player!: HTMLElement;
+  private playBtn!: HTMLButtonElement;
+  private nextBtn!: HTMLButtonElement;
+  private muteBtn!: HTMLButtonElement;
+  private volumeSlider!: HTMLInputElement;
+  private timeEl!: HTMLElement;
+  private timeCurrent!: HTMLElement;
+  private timeTotal!: HTMLElement;
+  private chapterEl!: HTMLElement;
+  private captionsBtn!: HTMLButtonElement;
+  private theaterBtn!: HTMLButtonElement;
+  private fullscreenBtn!: HTMLButtonElement;
+  private progress!: HTMLElement;
+  private played!: HTMLElement;
+  private buffer!: HTMLElement;
+  private ticks!: HTMLElement;
+  private handle!: HTMLElement;
+  private tooltip!: HTMLElement;
+  private tooltipChapter!: HTMLElement;
+  private tooltipTime!: HTMLElement;
+  private gradient!: HTMLElement;
+  private controls!: HTMLElement;
+  private feedback!: HTMLElement;
+  private bigPlay!: HTMLButtonElement;
+  private ended!: HTMLElement;
+  private endedNext!: HTMLButtonElement;
+  private endedName!: HTMLElement;
+  private empty!: HTMLElement;
+  private error!: HTMLElement;
+  private errorTitle!: HTMLElement;
+  private errorBody!: HTMLElement;
+  private spinner!: HTMLElement;
+  private loadbar!: HTMLElement;
+  private resume!: HTMLElement;
+  private resumeText!: HTMLElement;
+  private settings!: HTMLElement;
+  private menu!: HTMLElement;
+  private context!: HTMLElement;
+  private drop!: HTMLElement;
+  private titleEl!: HTMLElement;
+  private menuButtons: Record<MenuName, HTMLButtonElement> = {
+    file: null!,
+    playback: null!,
+    view: null!,
+  };
+
+  constructor(
+    root: HTMLElement,
+    private readonly actions: ViewActions,
+    private readonly nativeDrag: boolean,
+  ) {
+    this.root = root;
+    root.className = "app";
+    root.replaceChildren(this.build());
+    this.bind();
+    this.setControlsVisible(true);
+  }
+
+  render(state: PlayerState): void {
+    const previous = this.state;
+    this.state = state;
+    this.root.classList.toggle("is-fullscreen", state.fullscreen);
+    this.root.classList.toggle("is-theater", state.theater);
+    this.player.dataset.phase = state.phase;
+    this.player.dataset.playing = state.playing ? "true" : "false";
+    this.player.dataset.buffering = state.buffering ? "true" : "false";
+
+    const pair = formatPair(state.currentTime, state.duration);
+    this.timeCurrent.textContent = pair.current;
+    this.timeTotal.textContent = pair.total;
+    this.chapterEl.textContent = state.chapterTitle ?? "";
+    this.chapterEl.hidden = !state.chapterTitle;
+    this.titleEl.textContent = state.filename ?? "Glint";
+
+    const ratio = state.duration > 0 ? state.currentTime / state.duration : 0;
+    this.played.style.width = `${ratio * 100}%`;
+    this.handle.style.left = `${ratio * 100}%`;
+    this.progress.setAttribute("aria-valuenow", String(Math.round(ratio * 100)));
+    this.progress.setAttribute("aria-valuetext", `${pair.current} of ${pair.total}`);
+
+    if (
+      !previous ||
+      !sameRanges(previous.buffered, state.buffered) ||
+      previous.duration !== state.duration
+    ) {
+      this.buffer.replaceChildren(
+        ...state.buffered.map((range) => {
+          const el = document.createElement("span");
+          el.className = "buffer-range";
+          const start = state.duration > 0 ? (range.start / state.duration) * 100 : 0;
+          const end = state.duration > 0 ? (range.end / state.duration) * 100 : 0;
+          el.style.left = `${start}%`;
+          el.style.width = `${Math.max(0, end - start)}%`;
+          return el;
+        }),
+      );
+    }
+
+    if (!previous || previous.chapters !== state.chapters || previous.duration !== state.duration) {
+      this.ticks.replaceChildren(
+        ...state.chapters.slice(1).map((chapter) => {
+          const tick = document.createElement("span");
+          tick.className = "chapter-tick";
+          const at = state.duration > 0 ? (chapter.start / state.duration) * 100 : 0;
+          tick.style.left = `${at}%`;
+          return tick;
+        }),
+      );
+    }
+
+    if (!previous || previous.playing !== state.playing) {
+      const label = state.playing ? "Pause (k)" : "Play (k)";
+      this.playBtn.innerHTML = icon(state.playing ? "pause" : "play");
+      this.playBtn.setAttribute("aria-label", label);
+      this.playBtn.dataset.tip = label;
+    }
+    this.bigPlay.hidden = true;
+    this.nextBtn.hidden = !state.hasNext;
+    this.ended.hidden = !(state.phase === "ready" && state.ended);
+    this.endedNext.hidden = !state.hasNext;
+    this.endedName.textContent = state.nextFilename ?? "";
+
+    this.nextBtn.disabled = !state.hasNext;
+    this.nextBtn.setAttribute("aria-disabled", state.hasNext ? "false" : "true");
+
+    const volumeIcon: IconName =
+      state.muted || state.volume === 0
+        ? "volume-muted"
+        : state.volume < 0.5
+          ? "volume-low"
+          : "volume";
+    if (!previous || previous.muted !== state.muted || previous.volume !== state.volume) {
+      this.muteBtn.innerHTML = icon(volumeIcon);
+    }
+    this.muteBtn.setAttribute("aria-label", state.muted ? "Unmute (m)" : "Mute (m)");
+    if (document.activeElement !== this.volumeSlider) {
+      this.volumeSlider.value = String(state.volume);
+    }
+    this.volumeSlider.style.setProperty("--vol", `${state.volume * 100}%`);
+    this.volumeSlider.setAttribute(
+      "aria-valuetext",
+      state.muted ? "Muted" : `${Math.round(state.volume * 100)} percent`,
+    );
+
+    this.captionsBtn.classList.toggle("is-on", state.captionsOn);
+    this.captionsBtn.setAttribute("aria-pressed", state.captionsOn ? "true" : "false");
+    this.captionsBtn.disabled =
+      state.tracks.length === 0 && state.phase !== "ready" && state.phase !== "empty";
+    this.theaterBtn.setAttribute("aria-pressed", state.theater ? "true" : "false");
+    this.theaterBtn.innerHTML = icon("theater");
+    this.fullscreenBtn.innerHTML = icon(state.fullscreen ? "fullscreen-exit" : "fullscreen");
+    this.fullscreenBtn.setAttribute(
+      "aria-label",
+      state.fullscreen ? "Exit fullscreen (f)" : "Fullscreen (f)",
+    );
+
+    this.error.hidden = state.phase !== "error";
+    this.errorTitle.textContent = state.errorTitle ?? "";
+    this.errorBody.textContent = state.errorBody ?? "";
+    this.empty.hidden = state.phase !== "empty";
+    this.spinner.hidden = !state.buffering || state.ended;
+    this.loadbar.hidden = state.phase !== "loading";
+
+    const showResume = Boolean(state.resumeLabel) && state.phase === "ready";
+    if (showResume && state.resumeLabel !== previous?.resumeLabel) {
+      this.resumeText.textContent = state.resumeLabel ?? "";
+      this.resume.hidden = false;
+      window.clearTimeout(this.resumeTimer);
+      this.resumeTimer = window.setTimeout(() => {
+        this.resume.hidden = true;
+      }, 6000);
+    }
+    if (!showResume) this.resume.hidden = true;
+
+    if (this.settingsOpen && settingsChanged(previous, state)) this.paintSettings();
+    if (this.menuName && menuChanged(previous, state)) this.paintMenu();
+
+    if (!state.playing) this.setControlsVisible(true);
+    else if (!previous?.playing) this.scheduleHide();
+  }
+
+  flash(effect: FlashEffect): void {
+    const glyph: IconName =
+      effect.kind === "pause"
+        ? "pause"
+        : effect.kind === "seek"
+          ? effect.direction < 0
+            ? "seek-back"
+            : "seek-forward"
+          : effect.kind === "volume"
+            ? "volume"
+            : effect.kind === "rate"
+              ? "settings"
+              : "play";
+    const label = effect.kind === "play" ? "" : effect.kind === "pause" ? "" : effect.label;
+    this.feedback.dataset.side =
+      effect.kind === "seek" ? (effect.direction < 0 ? "back" : "forward") : "center";
+    this.feedback.replaceChildren();
+    const bubble = document.createElement("div");
+    bubble.className = "feedback-bubble";
+    bubble.innerHTML = icon(glyph);
+    if (label) {
+      const text = document.createElement("span");
+      text.textContent = label;
+      bubble.append(text);
+    }
+    this.feedback.append(bubble);
+    this.feedback.hidden = false;
+    bubble.addEventListener("animationend", () => {
+      bubble.remove();
+      if (!this.feedback.childElementCount) this.feedback.hidden = true;
+    });
+  }
+
+  setDragHover(on: boolean): void {
+    this.drop.hidden = !on;
+  }
+
+  isOverlayOpen(): boolean {
+    return this.settingsOpen || this.menuName != null || !this.context.hidden;
+  }
+
+  private build(): HTMLElement {
+    const header = el("header", "menubar");
+    const nav = el("nav", "menu-nav");
+    this.menuButtons.file = menuButton("File");
+    this.menuButtons.playback = menuButton("Playback");
+    this.menuButtons.view = menuButton("View");
+    nav.append(this.menuButtons.file, this.menuButtons.playback, this.menuButtons.view);
+    const brand = el("div", "brand");
+    const mark = el("span", "brand-mark");
+    mark.innerHTML = icon("play");
+    const word = el("span", "brand-name");
+    word.textContent = "Glint";
+    brand.append(mark, word);
+    this.titleEl = el("div", "window-title");
+    this.titleEl.dir = "auto";
+    this.titleEl.textContent = "Glint";
+    header.append(nav, this.titleEl, brand);
+
+    this.menu = el("div", "menu");
+    this.menu.hidden = true;
+    header.append(this.menu);
+
+    this.player = el("div", "player");
+    this.player.dataset.phase = "empty";
+    this.videoSlot = el("div", "video-slot");
+    const gesture = el("div", "gesture");
+    gesture.addEventListener("click", () => this.actions.togglePlay());
+    gesture.addEventListener("dblclick", (event) => {
+      event.preventDefault();
+      this.actions.toggleFullscreen();
+    });
+
+    this.gradient = el("div", "gradient");
+    this.feedback = el("div", "feedback");
+    this.feedback.hidden = true;
+
+    this.bigPlay = button("big-play", "Play", "play");
+    this.bigPlay.addEventListener("click", (event) => {
+      event.stopPropagation();
+      this.actions.togglePlay();
+    });
+
+    this.ended = el("div", "ended");
+    this.ended.hidden = true;
+    const replay = button("ended-replay", "Replay", "replay");
+    replay.addEventListener("click", () => this.actions.replay());
+    this.endedNext = button("ended-next", "Up next", "next");
+    this.endedName = el("span", "ended-name");
+    this.endedNext.append(this.endedName);
+    this.endedNext.addEventListener("click", () => this.actions.next());
+    this.ended.append(replay, this.endedNext);
+
+    this.empty = el("div", "empty");
+    const emptyMark = el("div", "empty-mark");
+    emptyMark.innerHTML = icon("play");
+    const emptyTitle = el("h1");
+    emptyTitle.textContent = "Drop a video to play";
+    const emptyCopy = el("p");
+    emptyCopy.textContent =
+      "MP4 and WebM play in the built-in player. Use File → Open, or drop a file on the window.";
+    const openBtn = el("button", "open-btn");
+    openBtn.type = "button";
+    openBtn.textContent = "Open file";
+    openBtn.addEventListener("click", () => this.actions.openVideo());
+    const hints = el("p", "hints");
+    hints.textContent = "Space play  ·  J / L seek  ·  ← → 5 seconds  ·  F fullscreen  ·  M mute";
+    this.empty.append(emptyMark, emptyTitle, emptyCopy, openBtn, hints);
+
+    this.error = el("div", "error");
+    this.error.hidden = true;
+    this.errorTitle = el("h1");
+    this.errorBody = el("p");
+    const another = el("button", "open-btn");
+    another.type = "button";
+    another.textContent = "Open another file";
+    another.addEventListener("click", () => this.actions.openVideo());
+    this.error.append(this.errorTitle, this.errorBody, another);
+
+    this.spinner = el("div", "spinner");
+    this.spinner.hidden = true;
+    this.loadbar = el("div", "loadbar");
+    this.loadbar.hidden = true;
+
+    this.resume = el("div", "resume");
+    this.resume.hidden = true;
+    this.resumeText = el("span");
+    const startOver = el("button");
+    startOver.type = "button";
+    startOver.textContent = "Start over";
+    startOver.addEventListener("click", () => this.actions.startOver());
+    this.resume.append(this.resumeText, startOver);
+
+    this.controls = el("div", "controls");
+    this.progress = el("div", "progress");
+    this.progress.setAttribute("role", "slider");
+    this.progress.setAttribute("aria-label", "Seek");
+    this.progress.setAttribute("aria-valuemin", "0");
+    this.progress.setAttribute("aria-valuemax", "100");
+    this.progress.tabIndex = 0;
+    this.tooltip = el("div", "tooltip");
+    this.tooltip.hidden = true;
+    this.tooltipChapter = el("span", "tooltip-chapter");
+    this.tooltipTime = el("span", "tooltip-time");
+    this.tooltip.append(this.tooltipChapter, this.tooltipTime);
+    const track = el("div", "progress-track");
+    this.buffer = el("div", "buffer");
+    this.played = el("div", "played");
+    this.ticks = el("div", "ticks");
+    this.handle = el("div", "handle");
+    track.append(this.buffer, this.played, this.ticks, this.handle);
+    this.progress.append(this.tooltip, track);
+
+    const bar = el("div", "bar");
+    const left = el("div", "bar-left");
+    const right = el("div", "bar-right");
+    this.playBtn = iconButton("play", "Play (k)");
+    this.playBtn.classList.add("play-toggle");
+    this.nextBtn = iconButton("next", "Next (Shift+N)");
+    this.muteBtn = iconButton("volume", "Mute (m)");
+    this.volumeSlider = document.createElement("input");
+    this.volumeSlider.type = "range";
+    this.volumeSlider.className = "volume-slider";
+    this.volumeSlider.min = "0";
+    this.volumeSlider.max = "1";
+    this.volumeSlider.step = "0.01";
+    this.volumeSlider.value = "1";
+    this.volumeSlider.setAttribute("aria-label", "Volume");
+    const volumePop = el("div", "volume-pop");
+    volumePop.append(this.volumeSlider);
+    const volume = el("div", "volume");
+    volume.append(this.muteBtn, volumePop);
+    this.timeEl = el("div", "time");
+    this.timeCurrent = el("span", "time-current");
+    this.timeCurrent.textContent = "0:00";
+    const duration = el("span", "time-dur");
+    duration.append(document.createTextNode(" / "));
+    this.timeTotal = el("span", "time-total");
+    this.timeTotal.textContent = "0:00";
+    duration.append(this.timeTotal);
+    this.timeEl.append(this.timeCurrent, duration);
+    this.chapterEl = el("div", "chapter-label");
+    this.chapterEl.dir = "auto";
+    this.chapterEl.hidden = true;
+    left.append(this.playBtn, this.nextBtn, volume, this.timeEl, this.chapterEl);
+
+    this.captionsBtn = iconButton("captions", "Captions (c)");
+    this.captionsBtn.setAttribute("aria-pressed", "false");
+    const settingsBtn = iconButton("settings", "Settings");
+    settingsBtn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      this.toggleSettings();
+    });
+    this.theaterBtn = iconButton("theater", "Theater mode (t)");
+    this.theaterBtn.classList.add("optional-control");
+    this.fullscreenBtn = iconButton("fullscreen", "Fullscreen (f)");
+    const cluster = el("div", "control-cluster");
+    cluster.append(this.captionsBtn, settingsBtn, this.theaterBtn, this.fullscreenBtn);
+    right.append(cluster);
+    bar.append(left, right);
+    this.controls.append(this.progress, bar);
+
+    this.settings = el("div", "settings");
+    this.settings.hidden = true;
+    this.settings.setAttribute("role", "menu");
+    this.context = el("div", "context");
+    this.context.hidden = true;
+    this.drop = el("div", "drop");
+    this.drop.hidden = true;
+    this.drop.textContent = "Drop to play";
+
+    this.player.append(
+      this.videoSlot,
+      gesture,
+      this.gradient,
+      this.feedback,
+      this.bigPlay,
+      this.ended,
+      this.empty,
+      this.error,
+      this.spinner,
+      this.loadbar,
+      this.resume,
+      this.controls,
+      this.settings,
+      this.context,
+      this.drop,
+    );
+
+    const stage = el("div", "stage");
+    stage.append(this.player);
+    const shell = el("div", "shell");
+    shell.append(header, stage);
+    return shell;
+  }
+
+  private bind(): void {
+    this.playBtn.addEventListener("click", () => this.actions.togglePlay());
+    this.nextBtn.addEventListener("click", () => this.actions.next());
+    this.muteBtn.addEventListener("click", () => this.actions.toggleMute());
+    this.captionsBtn.addEventListener("click", () => {
+      if (!this.state || this.state.tracks.length === 0) this.actions.openSubtitle();
+      else this.actions.toggleCaptions();
+    });
+    this.theaterBtn.addEventListener("click", () => this.actions.toggleTheater());
+    this.fullscreenBtn.addEventListener("click", () => this.actions.toggleFullscreen());
+    this.volumeSlider.addEventListener("input", () => {
+      this.actions.setVolume(Number(this.volumeSlider.value));
+    });
+    this.volumeSlider.addEventListener("pointerup", () => this.volumeSlider.blur());
+    this.volumeSlider.addEventListener("keyup", () => this.volumeSlider.blur());
+
+    this.progress.addEventListener("pointerdown", (event) => this.onScrubStart(event));
+    this.progress.addEventListener("pointermove", (event) => this.onScrubMove(event));
+    this.progress.addEventListener("pointerup", (event) => this.onScrubEnd(event));
+    this.progress.addEventListener("pointerleave", () => {
+      if (!this.scrubbing) this.tooltip.hidden = true;
+    });
+
+    for (const name of ["file", "playback", "view"] as const) {
+      this.menuButtons[name].addEventListener("click", (event) => {
+        event.stopPropagation();
+        this.toggleMenu(name);
+      });
+    }
+
+    this.player.addEventListener("contextmenu", (event) => {
+      if (this.state?.phase === "empty") return;
+      event.preventDefault();
+      this.openContext(event.clientX, event.clientY);
+    });
+
+    this.player.addEventListener("pointermove", (event) => this.onPointerMove(event));
+    this.player.addEventListener("pointerleave", () => this.scheduleHide());
+
+    document.addEventListener("pointerdown", (event) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (!this.menu.hidden && !this.menu.contains(target) && !targetBelongs(target, ".menu-btn")) {
+        this.closeMenus();
+      }
+      if (
+        !this.settings.hidden &&
+        !this.settings.contains(target) &&
+        !targetBelongs(target, "[aria-label='Settings']")
+      ) {
+        this.closeSettings();
+      }
+      if (!this.context.hidden && !this.context.contains(target)) this.context.hidden = true;
+    });
+
+    window.addEventListener("keydown", (event) => this.onKey(event), true);
+    window.addEventListener("dragover", (event) => {
+      if (this.nativeDrag) return;
+      event.preventDefault();
+      this.setDragHover(true);
+    });
+    window.addEventListener("dragleave", (event) => {
+      if (this.nativeDrag) return;
+      if (event.relatedTarget == null) this.setDragHover(false);
+    });
+    window.addEventListener("drop", (event) => {
+      event.preventDefault();
+      this.setDragHover(false);
+      if (this.nativeDrag) return;
+      const files = [...(event.dataTransfer?.files ?? [])];
+      if (files.length > 0) this.actions.filesDropped(files);
+    });
+  }
+
+  private onKey(event: KeyboardEvent): void {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "o" && !event.shiftKey) {
+      event.preventDefault();
+      this.actions.openVideo();
+      return;
+    }
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "q") {
+      event.preventDefault();
+      this.actions.quit();
+      return;
+    }
+    if (isTypingTarget(event.target)) return;
+    if (this.isOverlayOpen() && event.key !== "Escape") return;
+    const action = mapShortcut({
+      key: event.key,
+      code: event.code,
+      shiftKey: event.shiftKey,
+      altKey: event.altKey,
+      ctrlKey: event.ctrlKey,
+      metaKey: event.metaKey,
+      repeat: event.repeat,
+    });
+    if (!action) return;
+    event.preventDefault();
+    if (action.type === "escape") {
+      if (this.isOverlayOpen()) {
+        this.closeMenus();
+        this.closeSettings();
+        this.context.hidden = true;
+        return;
+      }
+    }
+    if (action.type === "next") {
+      this.actions.next();
+      return;
+    }
+    this.actions.shortcut(action);
+  }
+
+  private onScrubStart(event: PointerEvent): void {
+    if (event.button !== 0 || !this.state || this.state.duration <= 0) return;
+    this.scrubbing = true;
+    this.progress.classList.add("is-scrubbing");
+    this.progress.setPointerCapture(event.pointerId);
+    this.seekFromPointer(event);
+    this.placeTooltip(event);
+    this.wakeControls();
+  }
+
+  private onScrubMove(event: PointerEvent): void {
+    if (!this.state || this.state.duration <= 0) return;
+    this.placeTooltip(event);
+    if (this.scrubbing) this.seekFromPointer(event);
+  }
+
+  private onScrubEnd(event: PointerEvent): void {
+    if (!this.scrubbing) return;
+    this.scrubbing = false;
+    this.progress.classList.remove("is-scrubbing");
+    this.seekFromPointer(event);
+    const rect = this.progress.getBoundingClientRect();
+    const inside =
+      event.clientX >= rect.left &&
+      event.clientX <= rect.right &&
+      event.clientY >= rect.top &&
+      event.clientY <= rect.bottom;
+    this.tooltip.hidden = !inside;
+  }
+
+  private seekFromPointer(event: PointerEvent): void {
+    const ratio = this.ratioFromEvent(event);
+    this.actions.seekRatio(ratio);
+  }
+
+  private placeTooltip(event: PointerEvent): void {
+    if (!this.state) return;
+    const rect = this.progress.getBoundingClientRect();
+    const ratio = this.ratioFromEvent(event);
+    const time = ratio * this.state.duration;
+    const chapter = chapterAt(this.state.chapters, time);
+    this.tooltipTime.textContent = formatTime(time, this.state.duration >= 3600);
+    this.tooltipChapter.textContent = chapter?.title ?? "";
+    this.tooltipChapter.hidden = !chapter;
+    this.tooltip.hidden = false;
+    const width = this.tooltip.offsetWidth || 48;
+    const x = ratio * rect.width;
+    const clamped = Math.min(rect.width - width / 2 - 8, Math.max(width / 2 + 8, x));
+    this.tooltip.style.left = `${clamped}px`;
+  }
+
+  private ratioFromEvent(event: PointerEvent): number {
+    const rect = this.progress.getBoundingClientRect();
+    if (rect.width <= 0) return 0;
+    return Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+  }
+
+  private toggleMenu(name: MenuName): void {
+    this.closeSettings();
+    this.context.hidden = true;
+    if (this.menuName === name) {
+      this.closeMenus();
+      return;
+    }
+    this.menuName = name;
+    this.paintMenu();
+    const button = this.menuButtons[name];
+    const rect = button.getBoundingClientRect();
+    const parent =
+      button.offsetParent instanceof HTMLElement
+        ? button.offsetParent.getBoundingClientRect()
+        : rect;
+    this.menu.style.left = `${rect.left - parent.left}px`;
+    this.menu.hidden = false;
+    for (const key of Object.keys(this.menuButtons) as MenuName[]) {
+      this.menuButtons[key].setAttribute("aria-expanded", key === name ? "true" : "false");
+    }
+    this.wakeControls();
+  }
+
+  private paintMenu(): void {
+    const state = this.state;
+    this.menu.replaceChildren();
+    const run = (fn: () => void) => () => {
+      this.closeMenus();
+      this.context.hidden = true;
+      fn();
+    };
+    if (this.menuName === "file") {
+      this.menu.append(
+        menuItem(
+          "Open…",
+          "Ctrl+O",
+          run(() => this.actions.openVideo()),
+        ),
+        menuItem(
+          "Open subtitle…",
+          "",
+          run(() => this.actions.openSubtitle()),
+        ),
+      );
+      if (this.nativeDrag) {
+        this.menu.append(
+          separator(),
+          menuItem(
+            "Quit",
+            "Ctrl+Q",
+            run(() => this.actions.quit()),
+          ),
+        );
+      }
+    } else if (this.menuName === "playback") {
+      this.menu.append(
+        menuItem(
+          state?.playing ? "Pause" : "Play",
+          "K",
+          run(() => this.actions.togglePlay()),
+        ),
+        menuItem(
+          "Next",
+          "Shift+N",
+          run(() => this.actions.next()),
+          !state?.hasNext,
+        ),
+        menuItem(
+          state?.muted ? "Unmute" : "Mute",
+          "M",
+          run(() => this.actions.toggleMute()),
+        ),
+      );
+    } else if (this.menuName === "view") {
+      this.menu.append(
+        menuItem(
+          state?.theater ? "Leave theater mode" : "Theater mode",
+          "T",
+          run(() => this.actions.toggleTheater()),
+        ),
+        menuItem(
+          state?.fullscreen ? "Exit fullscreen" : "Fullscreen",
+          "F",
+          run(() => this.actions.toggleFullscreen()),
+        ),
+      );
+    }
+  }
+
+  private closeMenus(): void {
+    this.menuName = null;
+    this.menu.hidden = true;
+    for (const button of Object.values(this.menuButtons))
+      button.setAttribute("aria-expanded", "false");
+    this.scheduleHide();
+  }
+
+  private toggleSettings(): void {
+    if (this.settingsOpen) {
+      this.closeSettings();
+      return;
+    }
+    this.closeMenus();
+    this.context.hidden = true;
+    this.settingsOpen = true;
+    this.settingsPage = "main";
+    this.settings.hidden = false;
+    this.paintSettings();
+    this.wakeControls();
+  }
+
+  private closeSettings(): void {
+    this.settingsOpen = false;
+    this.settings.hidden = true;
+    this.scheduleHide();
+  }
+
+  private paintSettings(animate = false): void {
+    const state = this.state;
+    this.settings.replaceChildren();
+    if (!state) return;
+    if (this.settingsPage === "main") {
+      this.settings.append(
+        settingsRow("Playback speed", formatRate(state.rate), () => {
+          this.settingsPage = "speed";
+          this.paintSettings(true);
+        }),
+        settingsRow("Subtitles", subtitleSummary(state), () => {
+          this.settingsPage = "subtitles";
+          this.paintSettings(true);
+        }),
+      );
+      this.finishSettingsPaint(animate);
+      return;
+    }
+    const back = document.createElement("button");
+    back.type = "button";
+    back.className = "settings-back";
+    back.innerHTML = icon("back");
+    const label = document.createElement("span");
+    label.textContent = this.settingsPage === "speed" ? "Playback speed" : "Subtitles";
+    back.append(label);
+    back.addEventListener("click", () => {
+      this.settingsPage = "main";
+      this.paintSettings(true);
+    });
+    this.settings.append(back);
+    if (this.settingsPage === "speed") {
+      for (const rate of PLAYBACK_RATES) {
+        const selected = Math.abs(rate - state.rate) < 0.001;
+        this.settings.append(
+          settingsCheck(formatRate(rate), selected, () => {
+            this.actions.setRate(rate);
+          }),
+        );
+      }
+      this.finishSettingsPaint(animate);
+      return;
+    }
+    this.settings.append(
+      settingsCheck("Off", !state.captionsOn, () => this.actions.selectTrack(null)),
+    );
+    for (const track of state.tracks) {
+      this.settings.append(
+        settingsCheck(track.label, state.captionsOn && state.activeTrackId === track.id, () =>
+          this.actions.selectTrack(track.id),
+        ),
+      );
+    }
+    const load = document.createElement("button");
+    load.type = "button";
+    load.className = "settings-row";
+    load.textContent = "Load from file…";
+    load.addEventListener("click", () => {
+      this.closeSettings();
+      this.actions.openSubtitle();
+    });
+    this.settings.append(load);
+    this.finishSettingsPaint(animate);
+  }
+
+  private finishSettingsPaint(animate: boolean): void {
+    if (!animate) return;
+    this.settings.dataset.dir = this.settingsPage === "main" ? "back" : "forward";
+    this.settings.classList.remove("panel-swap");
+    void this.settings.offsetWidth;
+    this.settings.classList.add("panel-swap");
+  }
+
+  private openContext(x: number, y: number): void {
+    this.closeMenus();
+    this.closeSettings();
+    const state = this.state;
+    const run = (fn: () => void) => () => {
+      this.context.hidden = true;
+      fn();
+    };
+    this.context.replaceChildren(
+      menuItem(
+        "Open…",
+        "",
+        run(() => this.actions.openVideo()),
+      ),
+      menuItem(
+        "Open subtitle…",
+        "",
+        run(() => this.actions.openSubtitle()),
+      ),
+      separator(),
+      menuItem(
+        state?.playing ? "Pause" : "Play",
+        "K",
+        run(() => this.actions.togglePlay()),
+      ),
+      menuItem(
+        "Fullscreen",
+        "F",
+        run(() => this.actions.toggleFullscreen()),
+      ),
+    );
+    this.context.hidden = false;
+    const rect = this.player.getBoundingClientRect();
+    const width = 220;
+    const height = 180;
+    const left = Math.min(rect.width - width - 8, Math.max(8, x - rect.left));
+    const top = Math.min(rect.height - height - 8, Math.max(8, y - rect.top));
+    this.context.style.left = `${left}px`;
+    this.context.style.top = `${top}px`;
+  }
+
+  private onPointerMove(event: PointerEvent): void {
+    if (Date.now() < this.suppressPointerUntil) return;
+    const dx = event.clientX - this.pointerX;
+    const dy = event.clientY - this.pointerY;
+    // The progress bar moves under a stationary cursor, and hiding the cursor
+    // can emit a pointermove. Neither is the viewer reaching for the controls.
+    if (Number.isFinite(this.pointerX) && dx * dx + dy * dy < 4) return;
+    this.pointerX = event.clientX;
+    this.pointerY = event.clientY;
+    this.wakeControls();
+  }
+
+  private wakeControls(): void {
+    this.setControlsVisible(true);
+    this.scheduleHide();
+  }
+
+  private scheduleHide(): void {
+    window.clearTimeout(this.hideTimer);
+    this.hideTimer = window.setTimeout(() => {
+      if (!this.state?.playing || this.pointerIdleBlocked() || this.scrubbing) return;
+      this.setControlsVisible(false);
+    }, 3000);
+  }
+
+  private setControlsVisible(visible: boolean): void {
+    const hide = !visible && Boolean(this.state?.playing) && !this.pointerIdleBlocked();
+    const wasHidden = this.player.classList.contains("controls-hidden");
+    this.player.classList.toggle("controls-hidden", hide);
+    if (hide && !wasHidden) this.suppressPointerUntil = Date.now() + 200;
+  }
+
+  private pointerIdleBlocked(): boolean {
+    return this.isOverlayOpen() || this.scrubbing;
+  }
+}
+
+function subtitleSummary(state: PlayerState): string {
+  if (!state.captionsOn) return "Off";
+  return state.tracks.find((track) => track.id === state.activeTrackId)?.label ?? "On";
+}
+
+function menuChanged(previous: PlayerState | null, state: PlayerState): boolean {
+  if (!previous) return true;
+  return (
+    previous.playing !== state.playing ||
+    previous.hasNext !== state.hasNext ||
+    previous.muted !== state.muted ||
+    previous.theater !== state.theater ||
+    previous.fullscreen !== state.fullscreen
+  );
+}
+
+function settingsChanged(previous: PlayerState | null, state: PlayerState): boolean {
+  if (!previous) return true;
+  return (
+    previous.rate !== state.rate ||
+    previous.captionsOn !== state.captionsOn ||
+    previous.activeTrackId !== state.activeTrackId ||
+    previous.tracks.length !== state.tracks.length
+  );
+}
+
+function sameRanges(
+  a: { start: number; end: number }[],
+  b: { start: number; end: number }[],
+): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((range, index) => range.start === b[index].start && range.end === b[index].end);
+}
+
+function el<K extends keyof HTMLElementTagNameMap>(
+  tag: K,
+  className?: string,
+): HTMLElementTagNameMap[K] {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  return node;
+}
+
+function button(className: string, label: string, glyph: IconName): HTMLButtonElement {
+  const node = document.createElement("button");
+  node.type = "button";
+  node.className = className;
+  node.setAttribute("aria-label", label);
+  node.innerHTML = icon(glyph);
+  return node;
+}
+
+function iconButton(glyph: IconName, label: string): HTMLButtonElement {
+  const node = button("icon-btn", label, glyph);
+  node.dataset.tip = label;
+  return node;
+}
+
+function menuButton(label: string): HTMLButtonElement {
+  const node = document.createElement("button");
+  node.type = "button";
+  node.className = "menu-btn";
+  node.textContent = label;
+  node.setAttribute("aria-expanded", "false");
+  node.setAttribute("aria-haspopup", "menu");
+  return node;
+}
+
+function menuItem(
+  label: string,
+  kbd: string,
+  onClick: () => void,
+  disabled = false,
+): HTMLButtonElement {
+  const node = document.createElement("button");
+  node.type = "button";
+  node.className = "menu-item";
+  node.disabled = disabled;
+  const text = document.createElement("span");
+  text.textContent = label;
+  node.append(text);
+  if (kbd) {
+    const hint = document.createElement("span");
+    hint.className = "kbd";
+    hint.textContent = kbd;
+    node.append(hint);
+  }
+  node.addEventListener("click", () => onClick());
+  return node;
+}
+
+function separator(): HTMLElement {
+  const node = document.createElement("div");
+  node.className = "menu-sep";
+  return node;
+}
+
+function settingsRow(label: string, value: string, onClick: () => void): HTMLButtonElement {
+  const node = document.createElement("button");
+  node.type = "button";
+  node.className = "settings-row";
+  const name = document.createElement("span");
+  name.textContent = label;
+  const aside = document.createElement("span");
+  aside.className = "settings-value";
+  aside.textContent = value;
+  aside.insertAdjacentHTML("beforeend", icon("chevron"));
+  node.append(name, aside);
+  node.addEventListener("click", onClick);
+  return node;
+}
+
+function settingsCheck(label: string, selected: boolean, onClick: () => void): HTMLButtonElement {
+  const node = document.createElement("button");
+  node.type = "button";
+  node.className = "settings-row";
+  node.setAttribute("aria-checked", selected ? "true" : "false");
+  const mark = document.createElement("span");
+  mark.className = "check";
+  if (selected) mark.innerHTML = icon("check");
+  const text = document.createElement("span");
+  text.textContent = label;
+  node.append(mark, text);
+  node.addEventListener("click", onClick);
+  return node;
+}
+
+function targetBelongs(target: Node, selector: string): boolean {
+  return target instanceof Element && Boolean(target.closest(selector));
+}

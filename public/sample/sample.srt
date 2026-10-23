@@ -1,0 +1,7 @@
+1
+00:00:00,400 --> 00:00:02,400
+Sample captions are on
+
+2
+00:00:02,800 --> 00:00:05,200
+Drop a video anywhere to play it
