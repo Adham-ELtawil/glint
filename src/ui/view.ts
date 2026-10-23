@@ -3,7 +3,7 @@ import { PLAYBACK_RATES, formatRate } from "../player/rates";
 import { isTypingTarget, mapShortcut, type ShortcutAction } from "../player/shortcuts";
 import type { FlashEffect, PlayerState } from "../player/state";
 import { formatPair, formatTime } from "../player/time";
-import { icon, type IconName } from "./icons";
+import { icon, playPauseIcon, type IconName } from "./icons";
 
 export interface ViewActions {
   openVideo(): void;
@@ -25,8 +25,15 @@ export interface ViewActions {
   filesDropped(files: File[]): void;
 }
 
-/** How long the center play/pause/seek bubble stays up; a bit longer than its 0.45s CSS animation. */
-export const FEEDBACK_HIDE_MS = 500;
+/**
+ * How long the center play/pause/seek bubble stays up. Its CSS animation runs
+ * 0.5s; the timer is the safety net that removes it even when the animation
+ * never runs or never reports that it ended.
+ */
+export const FEEDBACK_HIDE_MS = 600;
+
+/** Transparent gap between chapter segments on the progress bar (YouTube uses 4px). */
+const CHAPTER_GAP_PX = 4;
 
 type SettingsPage = "main" | "speed" | "subtitles";
 type MenuName = "file" | "playback" | "view";
@@ -55,13 +62,15 @@ export class PlayerView {
   private timeCurrent!: HTMLElement;
   private timeTotal!: HTMLElement;
   private chapterEl!: HTMLElement;
+  private chapterTitle!: HTMLElement;
   private captionsBtn!: HTMLButtonElement;
   private theaterBtn!: HTMLButtonElement;
   private fullscreenBtn!: HTMLButtonElement;
   private progress!: HTMLElement;
-  private played!: HTMLElement;
-  private buffer!: HTMLElement;
-  private ticks!: HTMLElement;
+  private track!: HTMLElement;
+  /** One full-width copy of the bar per chapter, clipped to that chapter. */
+  private segments: { root: HTMLElement; buffer: HTMLElement; played: HTMLElement }[] = [];
+  private hoverSegment = -1;
   private handle!: HTMLElement;
   private tooltip!: HTMLElement;
   private tooltipChapter!: HTMLElement;
@@ -116,49 +125,43 @@ export class PlayerView {
     const pair = formatPair(state.currentTime, state.duration);
     this.timeCurrent.textContent = pair.current;
     this.timeTotal.textContent = pair.total;
-    this.chapterEl.textContent = state.chapterTitle ?? "";
+    this.chapterTitle.textContent = state.chapterTitle ?? "";
     this.chapterEl.hidden = !state.chapterTitle;
     this.titleEl.textContent = state.filename ?? "Glint";
 
     const ratio = state.duration > 0 ? state.currentTime / state.duration : 0;
-    this.played.style.width = `${ratio * 100}%`;
-    this.handle.style.left = `${ratio * 100}%`;
     this.progress.setAttribute("aria-valuenow", String(Math.round(ratio * 100)));
     this.progress.setAttribute("aria-valuetext", `${pair.current} of ${pair.total}`);
 
+    if (!previous || previous.chapters !== state.chapters || previous.duration !== state.duration) {
+      this.buildSegments(state);
+    }
     if (
       !previous ||
       !sameRanges(previous.buffered, state.buffered) ||
-      previous.duration !== state.duration
+      previous.duration !== state.duration ||
+      previous.chapters !== state.chapters
     ) {
-      this.buffer.replaceChildren(
-        ...state.buffered.map((range) => {
-          const el = document.createElement("span");
-          el.className = "buffer-range";
-          const start = state.duration > 0 ? (range.start / state.duration) * 100 : 0;
-          const end = state.duration > 0 ? (range.end / state.duration) * 100 : 0;
-          el.style.left = `${start}%`;
-          el.style.width = `${Math.max(0, end - start)}%`;
-          return el;
-        }),
-      );
+      for (const segment of this.segments) {
+        segment.buffer.replaceChildren(
+          ...state.buffered.map((range) => {
+            const el = document.createElement("span");
+            el.className = "buffer-range";
+            const start = state.duration > 0 ? (range.start / state.duration) * 100 : 0;
+            const end = state.duration > 0 ? (range.end / state.duration) * 100 : 0;
+            el.style.left = `${start}%`;
+            el.style.width = `${Math.max(0, end - start)}%`;
+            return el;
+          }),
+        );
+      }
     }
-
-    if (!previous || previous.chapters !== state.chapters || previous.duration !== state.duration) {
-      this.ticks.replaceChildren(
-        ...state.chapters.slice(1).map((chapter) => {
-          const tick = document.createElement("span");
-          tick.className = "chapter-tick";
-          const at = state.duration > 0 ? (chapter.start / state.duration) * 100 : 0;
-          tick.style.left = `${at}%`;
-          return tick;
-        }),
-      );
-    }
+    const playedWidth = `${ratio * 100}%`;
+    for (const segment of this.segments) segment.played.style.width = playedWidth;
+    this.handle.style.left = playedWidth;
 
     if (!previous || previous.playing !== state.playing) {
       const label = state.playing ? "Pause (k)" : "Play (k)";
-      this.playBtn.innerHTML = icon(state.playing ? "pause" : "play");
       this.playBtn.setAttribute("aria-label", label);
       this.playBtn.dataset.tip = label;
     }
@@ -195,7 +198,12 @@ export class PlayerView {
     this.captionsBtn.disabled =
       state.tracks.length === 0 && state.phase !== "ready" && state.phase !== "empty";
     this.theaterBtn.setAttribute("aria-pressed", state.theater ? "true" : "false");
-    this.theaterBtn.innerHTML = icon("theater");
+    if (!previous || previous.theater !== state.theater) {
+      this.theaterBtn.innerHTML = icon(state.theater ? "theater-exit" : "theater");
+      const tip = state.theater ? "Default view (t)" : "Theater mode (t)";
+      this.theaterBtn.setAttribute("aria-label", tip);
+      this.theaterBtn.dataset.tip = tip;
+    }
     this.fullscreenBtn.innerHTML = icon(state.fullscreen ? "fullscreen-exit" : "fullscreen");
     this.fullscreenBtn.setAttribute(
       "aria-label",
@@ -245,7 +253,10 @@ export class PlayerView {
       effect.kind === "seek" ? (effect.direction < 0 ? "back" : "forward") : "center";
     this.clearFeedback();
     const bubble = document.createElement("div");
-    bubble.className = "feedback-bubble";
+    bubble.className =
+      effect.kind === "play" || effect.kind === "pause"
+        ? "feedback-bubble is-bezel"
+        : "feedback-bubble";
     bubble.innerHTML = icon(glyph);
     if (label) {
       const text = document.createElement("span");
@@ -271,6 +282,58 @@ export class PlayerView {
     this.feedbackTimer = 0;
     this.feedback.replaceChildren();
     this.feedback.hidden = true;
+  }
+
+  /**
+   * Chapters are drawn the way YouTube draws them: separate bar segments with
+   * a small transparent gap between them. Each segment is a full-width copy of
+   * the bar clipped to its chapter, so played/buffered widths stay plain
+   * percentages of the whole video and line up exactly with the handle.
+   */
+  private buildSegments(state: PlayerState): void {
+    const bounds = [0];
+    if (state.duration > 0) {
+      for (const chapter of state.chapters) {
+        const at = chapter.start / state.duration;
+        if (at > 0.001 && at < 0.999 && at > bounds[bounds.length - 1]) bounds.push(at);
+      }
+    }
+    bounds.push(1);
+    const half = CHAPTER_GAP_PX / 2;
+    this.segments = [];
+    const nodes: HTMLElement[] = [];
+    for (let index = 0; index < bounds.length - 1; index++) {
+      const left = bounds[index] * 100;
+      const right = (1 - bounds[index + 1]) * 100;
+      const root = el("div", "segment");
+      const insetLeft = index === 0 ? "0px" : `calc(${left}% + ${half}px)`;
+      const insetRight = index === bounds.length - 2 ? "0px" : `calc(${right}% + ${half}px)`;
+      root.style.clipPath = `inset(0 ${insetRight} 0 ${insetLeft})`;
+      const buffer = el("div", "buffer");
+      const played = el("div", "played");
+      root.append(buffer, played);
+      this.segments.push({ root, buffer, played });
+      nodes.push(root);
+    }
+    this.hoverSegment = -1;
+    this.track.replaceChildren(...nodes, this.handle);
+  }
+
+  private setHoverSegment(ratio: number | null): void {
+    let index = -1;
+    if (ratio != null && this.state && this.state.duration > 0) {
+      const time = ratio * this.state.duration;
+      index = 0;
+      const starts = this.state.chapters
+        .map((chapter) => chapter.start)
+        .filter((start) => start > 0.001 * this.state!.duration);
+      for (const start of starts) if (time >= start) index++;
+      index = Math.min(index, this.segments.length - 1);
+    }
+    if (index === this.hoverSegment) return;
+    this.segments[this.hoverSegment]?.root.classList.remove("is-hover");
+    this.segments[index]?.root.classList.add("is-hover");
+    this.hoverSegment = index;
   }
 
   setDragHover(on: boolean): void {
@@ -385,19 +448,17 @@ export class PlayerView {
     this.tooltipChapter = el("span", "tooltip-chapter");
     this.tooltipTime = el("span", "tooltip-time");
     this.tooltip.append(this.tooltipChapter, this.tooltipTime);
-    const track = el("div", "progress-track");
-    this.buffer = el("div", "buffer");
-    this.played = el("div", "played");
-    this.ticks = el("div", "ticks");
+    this.track = el("div", "progress-track");
     this.handle = el("div", "handle");
-    track.append(this.buffer, this.played, this.ticks, this.handle);
-    this.progress.append(this.tooltip, track);
+    this.track.append(this.handle);
+    this.progress.append(this.tooltip, this.track);
 
     const bar = el("div", "bar");
     const left = el("div", "bar-left");
     const right = el("div", "bar-right");
     this.playBtn = iconButton("play", "Play (k)");
     this.playBtn.classList.add("play-toggle");
+    this.playBtn.innerHTML = playPauseIcon();
     this.nextBtn = iconButton("next", "Next (Shift+N)");
     this.muteBtn = iconButton("volume", "Mute (m)");
     this.volumeSlider = document.createElement("input");
@@ -422,9 +483,17 @@ export class PlayerView {
     duration.append(this.timeTotal);
     this.timeEl.append(this.timeCurrent, duration);
     this.chapterEl = el("div", "chapter-label");
-    this.chapterEl.dir = "auto";
     this.chapterEl.hidden = true;
-    left.append(this.playBtn, this.nextBtn, volume, this.timeEl, this.chapterEl);
+    this.chapterTitle = el("span", "chapter-title");
+    this.chapterTitle.dir = "auto";
+    const chevron = el("span", "chapter-chevron");
+    chevron.innerHTML = icon("chevron");
+    this.chapterEl.append(this.chapterTitle, chevron);
+    const playGroup = el("div", "play-group");
+    playGroup.append(this.playBtn, this.nextBtn);
+    const volumeGroup = el("div", "control-cluster volume-group");
+    volumeGroup.append(volume, this.timeEl);
+    left.append(playGroup, volumeGroup, this.chapterEl);
 
     this.captionsBtn = iconButton("captions", "Captions (c)");
     this.captionsBtn.setAttribute("aria-pressed", "false");
@@ -496,6 +565,7 @@ export class PlayerView {
     this.progress.addEventListener("pointermove", (event) => this.onScrubMove(event));
     this.progress.addEventListener("pointerup", (event) => this.onScrubEnd(event));
     this.progress.addEventListener("pointerleave", () => {
+      if (!this.scrubbing) this.setHoverSegment(null);
       if (!this.scrubbing) this.tooltip.hidden = true;
     });
 
@@ -617,6 +687,7 @@ export class PlayerView {
       event.clientY >= rect.top &&
       event.clientY <= rect.bottom;
     this.tooltip.hidden = !inside;
+    if (!inside) this.setHoverSegment(null);
   }
 
   private seekFromPointer(event: PointerEvent): void {
@@ -629,6 +700,7 @@ export class PlayerView {
     const rect = this.progress.getBoundingClientRect();
     const ratio = this.ratioFromEvent(event);
     const time = ratio * this.state.duration;
+    this.setHoverSegment(ratio);
     const chapter = chapterAt(this.state.chapters, time);
     this.tooltipTime.textContent = formatTime(time, this.state.duration >= 3600);
     this.tooltipChapter.textContent = chapter?.title ?? "";

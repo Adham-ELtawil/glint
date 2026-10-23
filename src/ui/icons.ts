@@ -1,3 +1,9 @@
+/**
+ * Player glyphs, drawn on a 24px grid to match the proportions of the YouTube
+ * player (24px glyphs in 48px buttons, 2px strokes). The settings gear, skip,
+ * replay and check glyphs come from Google's Material Symbols Rounded
+ * (Apache-2.0); the rest are drawn here.
+ */
 export type IconName =
   | "play"
   | "pause"
@@ -8,6 +14,7 @@ export type IconName =
   | "captions"
   | "settings"
   | "theater"
+  | "theater-exit"
   | "fullscreen"
   | "fullscreen-exit"
   | "replay"
@@ -17,26 +24,97 @@ export type IconName =
   | "chevron"
   | "back";
 
-const PATHS: Record<IconName, string> = {
-  play: `<path d="M8.2 5.2v13.6c0 .8.9 1.3 1.6.8l9.8-6.8c.6-.4.6-1.3 0-1.7L9.8 4.4c-.7-.5-1.6 0-1.6.8z"/>`,
-  pause: `<path d="M7 5h3.2v14H7zm6.8 0H17v14h-3.2z"/>`,
-  next: `<path d="M6.2 5.3v13.4c0 .7.8 1.1 1.4.7l8.2-6.7c.5-.4.5-1.1 0-1.5L7.6 4.6c-.6-.4-1.4 0-1.4.7zM17.2 4.8h1.6v14.4h-1.6z"/>`,
-  volume: `<path d="M4 9.2h2.8L11 5.6v12.8L6.8 14.8H4zm9.2.2v5.2a3.2 3.2 0 0 0 0-5.2zm0-2.2a5.4 5.4 0 0 1 0 9.6V7.2z"/>`,
-  "volume-low": `<path d="M4 9.2h2.8L11 5.6v12.8L6.8 14.8H4zm8.6 1.1a2.2 2.2 0 0 1 0 3.4v-3.4z"/>`,
-  "volume-muted": `<path d="M4 9.2h2.8L11 5.6v12.8L6.8 14.8H4zm9.1.2 1.8 1.8 1.8-1.8 1.2 1.2-1.8 1.8 1.8 1.8-1.2 1.2-1.8-1.8-1.8 1.8-1.2-1.2 1.8-1.8-1.8-1.8z"/>`,
-  captions: `<path d="M3 6.5h18v11H3v-11zm2 2v7h14v-7H5zm1.6 1.6h3.2v1.5H8.2v2.3h1.6v1.5H6.6v-5.3zm5.2 0h3.2v1.5h-1.6v2.3h1.6v1.5h-3.2v-5.3z"/>`,
-  settings: `<path d="M19.4 13.2a7.2 7.2 0 0 0 .05-1.2 7.2 7.2 0 0 0-.05-1.2l1.7-1.3a.4.4 0 0 0 .1-.5l-1.6-2.8a.4.4 0 0 0-.5-.2l-2 .8a6.6 6.6 0 0 0-2.1-1.2l-.3-2.1a.4.4 0 0 0-.4-.4h-3.2a.4.4 0 0 0-.4.4l-.3 2.1a6.6 6.6 0 0 0-2.1 1.2l-2-.8a.4.4 0 0 0-.5.2L2.8 9a.4.4 0 0 0 .1.5l1.7 1.3a7.2 7.2 0 0 0 0 2.4l-1.7 1.3a.4.4 0 0 0-.1.5l1.6 2.8a.4.4 0 0 0 .5.2l2-.8a6.6 6.6 0 0 0 2.1 1.2l.3 2.1a.4.4 0 0 0 .4.4h3.2a.4.4 0 0 0 .4-.4l.3-2.1a6.6 6.6 0 0 0 2.1-1.2l2 .8a.4.4 0 0 0 .5-.2l1.6-2.8a.4.4 0 0 0-.1-.5l-1.7-1.3zM12 15.2A3.2 3.2 0 1 1 12 8.8a3.2 3.2 0 0 1 0 6.4z"/>`,
-  theater: `<path d="M3.5 6.5h17a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5h-17A1.5 1.5 0 0 1 2 16V8a1.5 1.5 0 0 1 1.5-1.5zm1.5 2v7h14v-7H5z"/>`,
-  fullscreen: `<path d="M4 9V5h4v1.8H5.8V9H4zm12-2.2V5h4v4h-1.8V6.8H16zM5.8 16.2V14H4v4h4v-1.8H5.8zM18.2 18H20v-4h-1.8v2.2H16V18h2.2z"/>`,
-  "fullscreen-exit": `<path d="M9 4v3.2H5.8V9H4V4h5zm9.2 3.2H15V4h5v5h-1.8V7.2zM4 15h1.8v1.8H9V20H4v-5zm12.2 1.8V15H20v5h-5v-1.8h1.2z"/>`,
-  replay: `<path d="M12 5a7 7 0 1 1-6.3 4H8l-3.2-3.2L1.5 9H4a8.5 8.5 0 1 0 2.2-4.7L7.4 5.6A7 7 0 0 1 12 5zm-1 3.2h1.6v4.3l3 1.8-.8 1.3-3.8-2.3V8.2z"/>`,
-  "seek-back": `<path d="M11.2 7.2 6 12l5.2 4.8V13h5.6v-2H11.2V7.2zM5 6.5h1.6v11H5v-11z"/>`,
-  "seek-forward": `<path d="M12.8 7.2V11H7.2v2h5.6v3.8L18 12l-5.2-4.8zM17.4 6.5H19v11h-1.6v-11z"/>`,
-  check: `<path d="M9.2 16.2 4.8 11.8l1.3-1.3 3.1 3.1 8-8 1.3 1.3-9.3 9.3z"/>`,
-  chevron: `<path d="M9.2 6.2 14.9 12l-5.7 5.8-1.3-1.3L12.3 12 7.9 7.5z"/>`,
-  back: `<path d="M14.8 6.2 9.1 12l5.7 5.8 1.3-1.3L11.7 12l4.4-4.5z"/>`,
+interface Glyph {
+  /** viewBox; defaults to the 24px grid. Material Symbols use a 960 grid. */
+  box?: string;
+  body: string;
+}
+
+const LINE = `fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"`;
+/** Filled shape with softened corners, like YouTube's play/next glyphs. */
+const SOFT = `stroke="currentColor" stroke-width="2" stroke-linejoin="round"`;
+
+const SPEAKER = `<path d="M12.4 3.4v17.2c0 .8-.9 1.2-1.5.7L6.4 17H3.4a2.2 2.2 0 0 1-2.2-2.2V9.2C1.2 8 2.2 7 3.4 7h3l4.5-4.3c.6-.5 1.5-.1 1.5.7z"/>`;
+
+const GLYPHS: Record<IconName, Glyph> = {
+  play: { body: `<path ${SOFT} d="M5.4 4.2 19.6 12 5.4 19.8z"/>` },
+  pause: {
+    body: `<rect x="5.6" y="4" width="4.6" height="16" rx="1.2"/><rect x="14.4" y="4" width="4.6" height="16" rx="1.2"/>`,
+  },
+  next: {
+    body: `<path ${SOFT} d="M5.2 5.6 14.6 12l-9.4 6.4z"/><rect x="16.8" y="4.6" width="2.6" height="14.8" rx="1.3"/>`,
+  },
+  volume: {
+    body: `${SPEAKER}<path ${LINE} d="M15.6 7.6a5.6 5.6 0 0 1 0 8.8M18.2 5a8 8 0 0 1 0 14"/>`,
+  },
+  "volume-low": { body: `${SPEAKER}<path ${LINE} d="M15.6 7.6a5.6 5.6 0 0 1 0 8.8"/>` },
+  "volume-muted": { body: `${SPEAKER}<path ${LINE} d="m15.6 8.8 6.4 6.4m0-6.4-6.4 6.4"/>` },
+  captions: {
+    body:
+      `<rect ${LINE} x="2" y="4.2" width="20" height="15.6" rx="2.4"/>` +
+      `<path ${LINE} stroke-width="1.9" d="M10 10.4a2.5 2.5 0 0 0-4.1 1.4v.4a2.5 2.5 0 0 0 4.1 1.4M17.8 10.4a2.5 2.5 0 0 0-4.1 1.4v.4a2.5 2.5 0 0 0 4.1 1.4"/>`,
+  },
+  settings: {
+    // Material Symbols Rounded "settings", weight 600, scaled to a 22.4px gear.
+    box: "36 -924 888 888",
+    body: `<path d="M413.09-65.87q-16.26 0-28.68-9.85Q372-85.56 370-101.83l-15-94.56q-15.61-5.31-34.07-15.89-18.45-10.59-31.63-21.33l-85.43 40q-15.7 6.57-31.96 1.78-16.26-4.78-24.82-20.04l-65.92-118.7q-9.13-14.13-5.34-30.1 3.78-15.98 17.47-26.11l79.44-59q-1.44-7.31-1.94-17.11-.5-9.81-.5-17.11 0-7.3.5-17.11.5-9.8 1.94-17.11L93.3-572.65q-14.26-10.13-17.76-26.11-3.5-15.98 5.63-30.67l65.92-118.7q8.56-14.13 24.54-19.48 15.98-5.35 31.67 1.22l87.13 40q12.61-10.18 30.79-20.48 18.17-10.3 33.78-15.17l15-95.57q2-16.83 14.41-26.96 12.42-10.13 28.68-10.13h133.82q16.26 0 28.68 10.13Q588-874.44 590-857.61l15 94.57q15.61 5.87 34.28 15.67 18.68 9.8 31.42 20.98l85.43-40q15.7-6.57 31.46-1.22 15.76 5.35 24.32 19.48l67.48 118.7q8.57 14.69 5.07 31.17-3.5 16.48-17.76 25.61l-80 56.43q1.43 8.31 2.21 18.11.79 9.81.79 18.11 0 8.3-.79 17.61-.78 9.3-2.21 17.61l80 57.43q14.26 9.13 17.76 25.61 3.5 16.48-5.07 31.17l-66.48 118.7q-8.56 14.7-24.54 19.76-15.98 5.07-31.67-1.5l-86.57-40q-13.17 10.74-30.85 21.55-17.67 10.8-34.28 15.67l-15 94.56q-2 16.27-14.41 26.11-12.42 9.85-28.68 9.85H413.09Zm27.43-79.22h78.39l14.57-111.43q33.56-8 63.91-25 30.35-17 54.35-42.7l106 46 34.91-64.65-92.87-67.87q4-17.56 6.78-34.63 2.79-17.06 2.79-34.63 0-17.57-2.29-34.63-2.28-17.07-7.28-34.63l93.44-67.87-35.48-64.65-105.44 46q-23-27.13-53.13-45.48-30.13-18.35-65.69-22.78l-14-110.87h-78.96l-13.43 110.87q-35.13 6.43-65.76 24.28-30.63 17.85-54.2 43.98l-104.87-46-35.48 64.65 92.31 67.3q-4 17.57-6.79 34.92-2.78 17.34-2.78 34.91 0 17.57 2.78 35.2 2.79 17.63 6.79 34.63l-92.31 67.3 35.48 64.65 104.87-46q24.57 25.13 55.2 42.7 30.63 17.56 64.76 25.56l13.43 110.87ZM478.87-350q54 0 92-38t38-92q0-54-38-92t-92-38q-54 0-92 38t-38 92q0 54 38 92t92 38ZM480-480Z"/>`,
+  },
+  theater: {
+    body:
+      `<rect ${LINE} x="2" y="4.2" width="20" height="15.6" rx="2.4"/>` +
+      `<path ${LINE} d="M2.4 16.4h19.2M9.6 8 7.2 10.4l2.4 2.4M14.4 8l2.4 2.4-2.4 2.4"/>`,
+  },
+  "theater-exit": {
+    body:
+      `<rect ${LINE} x="2" y="4.2" width="20" height="15.6" rx="2.4"/>` +
+      `<path ${LINE} d="M2.4 16.4h19.2M7.4 8l2.4 2.4-2.4 2.4M16.6 8l-2.4 2.4 2.4 2.4"/>`,
+  },
+  fullscreen: {
+    body: `<path ${LINE} d="M4.6 10.2V4.6h5.6M4.6 4.6l5.8 5.8M19.4 13.8v5.6h-5.6m5.6 0-5.8-5.8"/>`,
+  },
+  "fullscreen-exit": {
+    body: `<path ${LINE} d="M10.4 4.8v5.6H4.8m5.6 0L4.6 4.6M13.6 19.2v-5.6h5.6m-5.6 0 5.8 5.8"/>`,
+  },
+  replay: {
+    box: "0 -960 960 960",
+    body: `<path d="M339.5-108Q274-136 225-185t-77-114.5Q120-365 120-440q0-13 8.5-21.5T150-470q13 0 21.5 8.5T180-440q0 125 87.5 212.5T480-140q125 0 212.5-87.5T780-440q0-125-85-212.5T485-740h-22l52 52q9 9 9 21t-9 21q-9 9-21 9t-21-9L368-751q-9-9-9-21t9-21l106-106q8-8 20.5-8t20.5 8q8 8 8 20.5t-8 20.5l-58 58h23q75 0 140.5 28T735-695q49 49 77 114.5T840-440q0 75-28 140.5T735-185q-49 49-114.5 77T480-80q-75 0-140.5-28Z"/>`,
+  },
+  "seek-back": {
+    body: `<path ${SOFT} d="M11 6.6 4.4 12l6.6 5.4zM19.6 6.6 13 12l6.6 5.4z"/>`,
+  },
+  "seek-forward": {
+    body: `<path ${SOFT} d="M13 6.6 19.6 12 13 17.4zM4.4 6.6 11 12l-6.6 5.4z"/>`,
+  },
+  check: {
+    box: "0 -960 960 960",
+    body: `<path d="m378-332 363-363q9-9 21.5-9t21.5 9q9 9 9 21.5t-9 21.5L399-267q-9 9-21 9t-21-9L175-449q-9-9-8.5-21.5T176-492q9-9 21.5-9t21.5 9l159 160Z"/>`,
+  },
+  chevron: { body: `<path ${LINE} d="m9.4 6.4 5.6 5.6-5.6 5.6"/>` },
+  back: { body: `<path ${LINE} d="M14.6 6.4 9 12l5.6 5.6"/>` },
 };
 
+/** Play and pause share point counts so CSS can morph one into the other. */
+export const PLAY_MORPH = {
+  playLeft: "M5.4 4.2L12.5 8.1L12.5 15.9L5.4 19.8Z",
+  playRight: "M12.5 8.1L19.6 12L19.6 12L12.5 15.9Z",
+  pauseLeft: "M6.6 5L9.2 5L9.2 19L6.6 19Z",
+  pauseRight: "M14.8 5L17.4 5L17.4 19L14.8 19Z",
+} as const;
+
+/**
+ * The bar's play/pause glyph. Its `d` comes from CSS (`.morph-left` /
+ * `.morph-right`) so the shape animates like YouTube's; the attributes are
+ * the play shape for engines without CSS `d` support.
+ */
+export function playPauseIcon(): string {
+  return (
+    `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">` +
+    `<path class="morph-left" ${SOFT} d="${PLAY_MORPH.playLeft}"/>` +
+    `<path class="morph-right" ${SOFT} d="${PLAY_MORPH.playRight}"/></svg>`
+  );
+}
+
 export function icon(name: IconName): string {
-  return `<svg viewBox="0 0 24 24" aria-hidden="true">${PATHS[name]}</svg>`;
+  const glyph = GLYPHS[name];
+  return `<svg viewBox="${glyph.box ?? "0 0 24 24"}" aria-hidden="true" focusable="false">${glyph.body}</svg>`;
 }

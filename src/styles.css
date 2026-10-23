@@ -9,7 +9,8 @@
   --dim: #aaaaaa;
   --panel: rgba(28, 28, 28, 0.98);
   --hover: rgba(255, 255, 255, 0.1);
-  --font: Roboto, "Segoe UI", "Noto Sans Arabic", "Noto Naskh Arabic", Arial, Helvetica, sans-serif;
+  /* Roboto is bundled; Arabic falls through to Arial on Windows, as on YouTube. */
+  --font: Roboto, Arial, "Segoe UI", "Noto Sans Arabic", "Noto Naskh Arabic", Helvetica, sans-serif;
   font-family: var(--font);
   font-size: 14px;
 }
@@ -217,7 +218,7 @@ video::cue {
 
 /* Keep captions above the control bar while it is on screen. */
 .player:not(.controls-hidden) video::-webkit-media-text-track-container {
-  transform: translateY(-64px);
+  transform: translateY(-72px);
 }
 
 .gesture {
@@ -229,13 +230,13 @@ video::cue {
   left: 0;
   right: 0;
   bottom: 0;
-  height: 72px;
+  height: 112px;
   z-index: 3;
   pointer-events: none;
   background: linear-gradient(
     to top,
-    rgba(0, 0, 0, 0.72) 0%,
-    rgba(0, 0, 0, 0.28) 55%,
+    rgba(0, 0, 0, 0.75) 0%,
+    rgba(0, 0, 0, 0.4) 45%,
     transparent 100%
   );
   transition: opacity 0.25s cubic-bezier(0, 0, 0.2, 1);
@@ -247,7 +248,8 @@ video::cue {
   right: 0;
   bottom: 0;
   z-index: 5;
-  padding: 0;
+  /* YouTube insets the bar and the buttons 12px from the edges. */
+  padding: 0 12px 3px;
   transition: opacity 0.25s cubic-bezier(0, 0, 0.2, 1);
 }
 
@@ -270,30 +272,40 @@ video::cue {
 
 .progress {
   position: relative;
-  height: 16px;
+  height: 14px;
   margin: 0;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   cursor: pointer;
   touch-action: none;
 }
 
+/* Fixed height so a hovered chapter can grow without moving anything. */
 .progress-track {
   position: relative;
   width: 100%;
-  height: 3px;
-  background: rgba(255, 255, 255, 0.2);
-  transition: height 0.1s linear;
+  height: 5px;
 }
 
-.progress:hover .progress-track,
-.progress.is-scrubbing .progress-track {
-  height: 6px;
+.segment {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 3px;
+  transform: translateY(-50%);
+  /* Measured from the YouTube player: a dark track over the gradient. */
+  background: rgba(255, 255, 255, 0.08);
+  transition: height 0.1s cubic-bezier(0.4, 0, 1, 1);
+}
+
+.progress:hover .segment.is-hover,
+.progress.is-scrubbing .segment.is-hover {
+  height: 5px;
 }
 
 .buffer,
-.played,
-.ticks {
+.played {
   position: absolute;
   inset: 0;
 }
@@ -301,36 +313,28 @@ video::cue {
   position: absolute;
   top: 0;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.04);
 }
 .played {
   background: var(--progress);
   width: 0;
 }
-.chapter-tick {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  margin-left: -1px;
-  background: #000;
-}
 
 .handle {
   position: absolute;
   top: 50%;
-  width: 12px;
-  height: 12px;
-  border-radius: 6px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
   background: var(--progress);
-  transform: translate(-50%, -50%) scale(0);
-  transition: transform 0.08s linear;
+  transform: translate(-50%, -50%) scale(0.92);
+  transition: transform 0.1s cubic-bezier(0, 0, 0.2, 1);
   pointer-events: none;
 }
 
 .progress:hover .handle,
 .progress.is-scrubbing .handle {
-  transform: translate(-50%, -50%) scale(1);
+  transform: translate(-50%, -50%) scale(1.08);
 }
 
 .tooltip {
@@ -365,14 +369,15 @@ video::cue {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 56px;
+  height: 48px;
   gap: 0;
-  padding: 0 8px 0 4px;
+  padding: 0;
 }
 
 .bar-left,
 .bar-right,
-.volume {
+.volume,
+.play-group {
   display: flex;
   align-items: center;
 }
@@ -399,36 +404,64 @@ video::cue {
 .icon-btn {
   position: relative;
   width: 48px;
-  height: 48px;
-  border-radius: 0;
+  height: 40px;
+  border-radius: 20px;
   flex: none;
+  transition: background-color 0.1s cubic-bezier(0.4, 0, 1, 1);
+}
+
+/* Pills behind each group of controls, as in the current YouTube player. */
+.play-toggle,
+.control-cluster,
+.chapter-label {
+  background: rgba(0, 0, 0, 0.3);
 }
 
 .play-toggle {
   width: 40px;
   height: 40px;
-  margin-right: 2px;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.3);
 }
 
-.play-toggle:hover {
-  background: rgba(0, 0, 0, 0.5);
+/* Play <-> pause morph (same point count in both shapes; see PLAY_MORPH). */
+.play-toggle .morph-left,
+.play-toggle .morph-right {
+  transition: d 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.play-toggle .morph-left {
+  d: path("M5.4 4.2L12.5 8.1L12.5 15.9L5.4 19.8Z");
+}
+.play-toggle .morph-right {
+  d: path("M12.5 8.1L19.6 12L19.6 12L12.5 15.9Z");
+}
+.player[data-playing="true"] .play-toggle .morph-left {
+  d: path("M6.6 5L9.2 5L9.2 19L6.6 19Z");
+}
+.player[data-playing="true"] .play-toggle .morph-right {
+  d: path("M14.8 5L17.4 5L17.4 19L14.8 19Z");
+}
+.play-group .icon-btn + .icon-btn {
+  margin-left: 4px;
 }
 
 .control-cluster {
   display: flex;
   align-items: center;
   height: 40px;
-  padding: 0 4px;
-  border-radius: 28px;
-  background: rgba(0, 0, 0, 0.3);
+  padding: 0 3px;
+  border-radius: 20px;
+  flex: none;
 }
 
-.control-cluster .icon-btn {
-  width: 40px;
-  height: 40px;
+.volume-group {
+  margin-left: 8px;
+  padding: 0;
 }
+.volume-group .icon-btn {
+  width: 40px;
+  margin-left: 3px;
+}
+
 .icon-btn[data-tip]:hover::after {
   content: attr(data-tip);
   position: absolute;
@@ -460,7 +493,10 @@ video::cue {
 }
 
 .icon-btn:hover {
-  background: transparent;
+  background: rgba(255, 255, 255, 0.1);
+}
+.play-toggle:hover {
+  background: rgba(255, 255, 255, 0.16);
 }
 .icon-btn:disabled {
   opacity: 0.35;
@@ -475,9 +511,9 @@ video::cue {
 .icon-btn.is-on::before {
   content: "";
   position: absolute;
-  left: 10px;
-  right: 10px;
-  bottom: 6px;
+  left: 14px;
+  right: 14px;
+  bottom: 3px;
   height: 2px;
   border-radius: 1px;
   background: var(--progress);
@@ -504,15 +540,15 @@ video::cue {
 }
 .volume:hover .volume-pop,
 .volume:focus-within .volume-pop {
-  width: 72px;
+  width: 64px;
 }
 
 .volume-slider {
   -webkit-appearance: none;
   appearance: none;
-  width: 68px;
+  width: 60px;
   height: 3px;
-  margin: 0 4px 0 0;
+  margin: 0 0 0 4px;
   border-radius: 99px;
   background: linear-gradient(
     to right,
@@ -529,6 +565,7 @@ video::cue {
   border-radius: 50%;
   background: #fff;
   opacity: 0;
+  transition: opacity 0.1s linear;
 }
 .volume:hover .volume-slider::-webkit-slider-thumb,
 .volume:focus-within .volume-slider::-webkit-slider-thumb {
@@ -550,8 +587,9 @@ video::cue {
 
 .time {
   margin-left: 0;
-  padding: 0 8px;
-  color: #eee;
+  /* Matches YouTube's gap between the speaker and the clock. */
+  padding: 0 16px 0 25px;
+  color: #fff;
   font-size: 14px;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
@@ -560,29 +598,38 @@ video::cue {
   line-height: 40px;
 }
 .time-dur {
-  color: #eee;
+  color: #fff;
 }
 
 .chapter-label {
-  margin-left: 4px;
-  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 0 10px 0 16px;
   height: 40px;
-  line-height: 40px;
-  border-radius: 28px;
-  background: rgba(0, 0, 0, 0.3);
-  color: #eee;
-  font-size: 13px;
+  border-radius: 20px;
+  color: #fff;
+  font-size: 14px;
   font-weight: 400;
+  min-width: 0;
+  cursor: default;
+}
+.chapter-title {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   unicode-bidi: plaintext;
 }
-.chapter-label::before {
-  content: "•";
-  margin-right: 8px;
-  color: rgba(255, 255, 255, 0.7);
+.chapter-chevron {
+  flex: none;
+  display: grid;
+  margin-left: 2px;
+}
+.chapter-chevron svg {
+  width: 20px;
+  height: 20px;
+  display: block;
 }
 
 .big-play,
@@ -678,7 +725,20 @@ video::cue {
   height: 78px;
   border-radius: 39px;
   background: rgba(0, 0, 0, 0.6);
-  animation: feedback-pop 0.45s ease forwards;
+  animation: feedback-pop 0.5s ease forwards;
+}
+
+/* YouTube's center "bezel": a 52px disc that grows and fades out over 0.5s. */
+.feedback-bubble.is-bezel {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  animation: bezel-fade 0.5s linear forwards;
+}
+.feedback-bubble.is-bezel svg {
+  width: 36px;
+  height: 36px;
 }
 
 .feedback-bubble svg {
@@ -689,6 +749,17 @@ video::cue {
 .feedback-bubble span {
   font-size: 13px;
   font-weight: 500;
+}
+
+@keyframes bezel-fade {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(2);
+  }
 }
 
 @keyframes feedback-pop {
@@ -953,14 +1024,10 @@ video::cue {
   }
   .icon-btn {
     width: 40px;
-    height: 40px;
   }
   .time {
-    font-size: 12px;
-    line-height: 40px;
-  }
-  .bar {
-    height: 40px;
+    font-size: 13px;
+    padding-left: 12px;
   }
   .settings {
     width: min(268px, calc(100% - 16px));
@@ -972,27 +1039,31 @@ video::cue {
   }
   .icon-btn {
     width: 36px;
-    height: 36px;
-  }
-  .bar {
-    height: 36px;
   }
   .time {
-    line-height: 36px;
+    padding-right: 10px;
   }
 }
 
+/*
+ * Windows "Animation effects: off" makes WebView2 report reduced motion. The
+ * small control animations (center bezel, bar fade, scrubber grow, spinner)
+ * stay on regardless, like YouTube; only the panels lose their slide and
+ * just fade in.
+ */
 @media (prefers-reduced-motion: reduce) {
-  .feedback-bubble,
-  .spinner,
-  .loadbar::before,
-  .controls,
-  .gradient,
-  .volume-pop,
-  .progress-track,
   .settings,
+  .settings.panel-swap[data-dir="forward"],
+  .settings.panel-swap[data-dir="back"],
   .menu {
-    animation: none;
-    transition: none;
+    animation-name: fade-in;
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }
