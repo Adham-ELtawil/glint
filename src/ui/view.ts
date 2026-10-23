@@ -25,6 +25,9 @@ export interface ViewActions {
   filesDropped(files: File[]): void;
 }
 
+/** How long the center play/pause/seek bubble stays up; a bit longer than its 0.45s CSS animation. */
+export const FEEDBACK_HIDE_MS = 500;
+
 type SettingsPage = "main" | "speed" | "subtitles";
 type MenuName = "file" | "playback" | "view";
 
@@ -38,6 +41,7 @@ export class PlayerView {
   private scrubbing = false;
   private resumeTimer = 0;
   private hideTimer = 0;
+  private feedbackTimer = 0;
   private pointerX = Number.NaN;
   private pointerY = Number.NaN;
   private suppressPointerUntil = 0;
@@ -239,7 +243,7 @@ export class PlayerView {
     const label = effect.kind === "play" ? "" : effect.kind === "pause" ? "" : effect.label;
     this.feedback.dataset.side =
       effect.kind === "seek" ? (effect.direction < 0 ? "back" : "forward") : "center";
-    this.feedback.replaceChildren();
+    this.clearFeedback();
     const bubble = document.createElement("div");
     bubble.className = "feedback-bubble";
     bubble.innerHTML = icon(glyph);
@@ -250,10 +254,23 @@ export class PlayerView {
     }
     this.feedback.append(bubble);
     this.feedback.hidden = false;
-    bubble.addEventListener("animationend", () => {
-      bubble.remove();
-      if (!this.feedback.childElementCount) this.feedback.hidden = true;
-    });
+    // The timer is what hides the bubble. Animation events are only an early
+    // cleanup: they never fire when the animation is disabled (Windows
+    // "Animation effects" off maps to prefers-reduced-motion: reduce) or
+    // when the compositor stops advancing animations.
+    const done = () => {
+      if (bubble.isConnected) this.clearFeedback();
+    };
+    bubble.addEventListener("animationend", done, { once: true });
+    bubble.addEventListener("animationcancel", done, { once: true });
+    this.feedbackTimer = window.setTimeout(done, FEEDBACK_HIDE_MS);
+  }
+
+  private clearFeedback(): void {
+    window.clearTimeout(this.feedbackTimer);
+    this.feedbackTimer = 0;
+    this.feedback.replaceChildren();
+    this.feedback.hidden = true;
   }
 
   setDragHover(on: boolean): void {

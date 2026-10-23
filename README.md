@@ -56,8 +56,8 @@ npm run tauri build
 
 `src-tauri/tauri.windows.conf.json` selects the Windows bundle targets. The installers are written to:
 
-- `src-tauri/target/release/bundle/msi/Glint_0.1.0_x64_en-US.msi`
-- `src-tauri/target/release/bundle/nsis/Glint_0.1.0_x64-setup.exe`
+- `src-tauri/target/release/bundle/msi/Glint_0.1.1_x64_en-US.msi`
+- `src-tauri/target/release/bundle/nsis/Glint_0.1.1_x64-setup.exe`
 
 NSIS installs for the current user. WiX language is `en-US`. Both register file associations for mp4, m4v, webm, mkv, mov, avi, ogv, ogg, mpeg, and mpg, so **Open with → Glint** passes the path on the command line. The NSIS installer downloads the WebView2 bootstrapper if the runtime is missing.
 
