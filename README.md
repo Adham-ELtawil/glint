@@ -1,179 +1,323 @@
+<div align="center">
+
 # Glint
 
-Glint is a desktop video player with the controls, shortcuts, and pacing of the YouTube player. Open a local file and watch it. The window stays out of the way.
+**A fast, simple video player for Windows that looks and feels like the YouTube player.**
 
-v1 plays what the system webview can decode (MP4 and WebM on Windows WebView2). The playback engine sits behind an interface so a [libmpv](https://mpv.io/) backend can be added later for MKV and other codecs without rewriting the controls.
+[![Download for Windows](https://img.shields.io/badge/download-Windows%20installer-cc0000?logo=windows)](https://github.com/Adham-ELtawil/glint/releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+![Platform: Windows 10 | 11](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078d4)
+[![Built with Tauri 2](https://img.shields.io/badge/built%20with-Tauri%202-24c8db?logo=tauri)](https://tauri.app)
+
+![Glint playing a video, with chapters, captions, and the control bar](docs/screenshot.png)
+
+</div>
+
+Open a video and the same control bar, shortcuts, and animations you already know from YouTube are there. No setup and no ads, and the installer is about 2 MB.
+
+## Contents
+
+- [Features](#features)
+- [Download and install](#download-and-install)
+- [Using Glint](#using-glint)
+- [Keyboard shortcuts](#keyboard-shortcuts)
+- [Supported formats](#supported-formats)
+- [FAQ and troubleshooting](#faq-and-troubleshooting)
+- [Roadmap](#roadmap)
+- [Development](#development)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## Features
 
-- Open a file from **File → Open**, by dropping it on the window, or by launching Glint with a path (`glint video.mp4`, or **Open with** from Explorer). A second launch forwards the file to the window that is already open.
-- Folder playlist: other videos beside the file you opened, in natural order. **Next** (and Shift+N) plays the following one.
-- YouTube-style overlay: red progress bar with buffer, hover time, chapter ticks, scrubbing, play/pause, volume with a mute button and a slider that opens on hover, current/total time, chapter label, captions, settings, theater, and fullscreen. Controls fade after a few seconds. Play, pause, and seek flash in the center.
-- Keyboard shortcuts match YouTube. See the table below.
-- Subtitles: a same-named `.srt` or `.vtt` next to the video is picked up automatically (including `movie.en.srt`). You can also load one yourself. SRT is converted to WebVTT.
-- Chapters, when a sidecar exists: `movie.chapters.json` or `movie.chapters.vtt`. The current chapter is labeled on the control bar and in the hover tooltip.
-- Volume, mute, playback speed, and resume position are remembered per file. A new file inherits the last volume and speed. Resume is skipped in the first 5 seconds and the last 10.
-- Dark theme. The window title is the file name.
+- **YouTube-style player.** Red progress bar with buffering, hover time, and chapter segments. Play/pause, volume with a hover slider, time, chapter title, captions, settings, theater, and fullscreen. The controls fade while you watch.
+- **YouTube keyboard shortcuts.** K, J, L, the arrow keys, 0–9, `<` and `>`, and the rest. See [Keyboard shortcuts](#keyboard-shortcuts).
+- **Remembers where you stopped.** Position, volume, mute, and speed are saved for each file.
+- **Subtitles.** A matching `.srt` or `.vtt` next to the video loads on its own. You can also load one from **File → Open subtitle…**.
+- **Chapters.** Add a `.chapters.json` or `.chapters.vtt` file next to the video and the progress bar splits into chapters.
+- **Folder playlist.** The other videos in the same folder become a playlist. **Next** (Shift+N) plays the next one.
+- **One window.** Opening another file from Explorer sends it to the Glint window that is already open.
+- **Animations always on.** The play/pause animations still run when Windows **Animation effects** is turned off.
 
-## Requirements
+## Download and install
 
-- Node.js 22 or newer
-- Rust stable (1.90+; the repo pins stable in `rust-toolchain.toml`)
-- Windows: the WebView2 runtime. The MSI and NSIS installers download the bootstrapper if it is missing.
-- Linux, for development and CI: GTK 3 and WebKitGTK 4.1
+1. Go to the [latest release](https://github.com/Adham-ELtawil/glint/releases/latest) and download `Glint_<version>_x64-setup.exe`.
+2. Run it. Glint installs for your user account only, so it does not ask for administrator rights.
+3. Open Glint from the Start menu, or right-click a video and choose **Open with → Glint**.
+
+> [!NOTE]
+> **"Windows protected your PC."** The installer is not code-signed yet, so Microsoft Defender SmartScreen warns about it. Click **More info**, then **Run anyway**. The source code is all in this repository.
+
+**WebView2.** Glint draws its window with Microsoft Edge WebView2. It is already installed on Windows 11 and on most Windows 10 PCs. If it is missing, the installer downloads and installs it for you, which needs an internet connection.
+
+**Updating.** Close Glint, then run the new installer. Your saved positions and settings are kept.
+
+**Uninstalling.** Open **Settings → Apps → Installed apps**, find **Glint**, and choose **Uninstall**.
+
+## Using Glint
+
+**Open a video** in any of these ways:
+
+- **File → Open…** or Ctrl+O
+- Drag a video file onto the window
+- Right-click a video in Explorer and choose **Open with → Glint**. The installer registers Glint for mp4, m4v, webm, mkv, mov, avi, ogv, ogg, mpeg, and mpg. To make it the default, choose **Open with → Choose another app**, select Glint, and tick **Always**.
+- From a terminal: `glint "C:\Videos\movie.mp4"`
+
+**Playlist.** Glint lists the other videos in the same folder in natural order (`2.mp4` before `10.mp4`). At the end of a video, the end screen offers **Replay**, and **Up next** when there is another video in the folder.
+
+**Resume.** Glint reopens a file where you left it. It starts from the beginning if you stopped in the first 5 seconds or the last 10. A file you have never opened uses your last volume and speed. Glint remembers the 200 most recent files.
+
+**Subtitles.** For `movie.mp4`, Glint picks up `movie.srt`, `movie.vtt`, and language variants like `movie.en.srt`. Press C or click **CC** to turn them on or off. Switch tracks in **Settings → Subtitles**.
+
+**Chapters.** Put one of these next to the video:
+
+- `movie.chapters.json`:
+
+  ```json
+  [
+    { "start": 0, "title": "Intro" },
+    { "start": "1:30", "title": "Main part" }
+  ]
+  ```
+
+- `movie.chapters.vtt`: a WebVTT file where each cue's text is the chapter title.
+
+**Speed.** **Settings → Playback speed**, or `<` and `>`, from 0.25× to 2×.
+
+**Theater mode** (T) maximizes the window and hides the menu bar. **Fullscreen** is F, or double-click the video.
+
+The **right-click menu** on the video has Open, Open subtitle, Play/Pause, and Fullscreen.
+
+## Keyboard shortcuts
+
+| Key                   | Action                            |
+| --------------------- | --------------------------------- |
+| Space or K            | Play / pause                      |
+| J / L                 | Back / forward 10 seconds         |
+| ← / →                 | Back / forward 5 seconds          |
+| ↑ / ↓                 | Volume up / down 5%               |
+| M                     | Mute / unmute                     |
+| 0–9                   | Jump to 0%–90% of the video       |
+| Home / End            | Jump to the start / end           |
+| `<` / `>` (Shift+,/.) | Slower / faster                   |
+| C                     | Captions on / off                 |
+| F or double-click     | Fullscreen                        |
+| T                     | Theater mode                      |
+| Shift+N               | Next video in the folder          |
+| Esc                   | Close a menu, or leave fullscreen |
+| Ctrl+O                | Open a video                      |
+| Ctrl+Q                | Quit                              |
+
+## Supported formats
+
+Glint plays what Windows WebView2 can decode. In practice:
+
+| Format                          | Status                                                        |
+| ------------------------------- | ------------------------------------------------------------- |
+| **MP4 / M4V**                   | Plays with H.264 video and AAC or MP3 audio (the most common) |
+| **WebM**                        | Plays with VP8 or VP9 video and Opus or Vorbis audio          |
+| **MOV**                         | Plays only when it contains H.264 and AAC                     |
+| **HEVC (H.265), AV1**           | Only if the matching video extension is installed in Windows  |
+| **MKV, AVI, WMV, FLV, TS, OGV** | Not yet. Glint shows a "can't be played" message              |
+
+When a file can't be played, Glint shows a clear message instead of a black screen. Support for MKV and other formats is planned through a [libmpv](https://mpv.io) backend (see the [Roadmap](#roadmap)).
+
+## FAQ and troubleshooting
+
+**Windows says "Windows protected your PC".**
+The installer isn't code-signed yet. Click **More info → Run anyway**. See [Download and install](#download-and-install).
+
+**"Another program is currently using this file" when I run the installer.**
+Windows is still scanning or saving the download. Wait a few seconds and run it again. If you are updating, close Glint first.
+
+**A video shows "This file can't be played".**
+The file uses a format WebView2 can't decode, such as MKV. See [Supported formats](#supported-formats). For now you can convert it to MP4 (H.264 + AAC) with a tool like [HandBrake](https://handbrake.fr).
+
+**The play/pause animation doesn't show.**
+Update to 0.1.2 or newer. Older versions turned off animations when Windows **Animation effects** was off, and 0.1.0 could leave the play/pause icon stuck on screen.
+
+**My subtitles don't show up.**
+The subtitle file must have the same name as the video (`movie.mp4` → `movie.srt` or `movie.en.srt`) and be in the same folder. Otherwise load it from **File → Open subtitle…**. Only `.srt` and `.vtt` are supported.
+
+**Where are my settings stored?**
+On your PC, in Glint's WebView2 storage. Glint has no accounts and no telemetry, and it doesn't upload your videos or settings anywhere.
+
+## Roadmap
+
+- **libmpv backend** for MKV, AVI, and other formats WebView2 can't decode. The player is already built so a second engine can be plugged in.
+- **Better playlists:** a visible queue, previous, and shuffle.
+- **Thumbnail previews** on the progress bar when you hover.
+- **A signed installer**, so SmartScreen stops warning.
+
+Not planned for now: audio-only files, picture-in-picture, a playlist editor, and remembering the window size.
+
+---
+
+## Development
+
+Glint is built with [Tauri 2](https://tauri.app) (Rust), vanilla TypeScript, and [Vite](https://vite.dev). There is no UI framework.
+
+### Prerequisites
+
+You only need these to work on the code. People who just use Glint don't.
+
+- [Node.js](https://nodejs.org) 22 or newer (CI uses 22)
+- [Rust](https://rustup.rs) stable. `rust-toolchain.toml` pins the channel plus `rustfmt` and `clippy`, and `rustup` installs them on first build.
+- **Windows:** WebView2 (already on Windows 10/11) and the [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) with "Desktop development with C++". See [Tauri's Windows prerequisites](https://v2.tauri.app/start/prerequisites/#windows).
+- **Linux** (development and CI only, Glint is not released for Linux): GTK 3 and WebKitGTK 4.1.
+
+  ```bash
+  sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev \
+    librsvg2-dev patchelf build-essential libssl-dev libxdo-dev
+  ```
+
+### Run it
 
 ```bash
-sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf build-essential libssl-dev libxdo-dev
-```
-
-## Run
-
-```bash
+git clone https://github.com/Adham-ELtawil/glint.git
+cd glint
 npm install
 npm run tauri dev
 ```
 
-That starts the Vite dev server on [http://127.0.0.1:43123](http://127.0.0.1:43123) and opens the Glint window.
+This starts Vite on `http://127.0.0.1:43123` and opens the Glint window with hot reload.
 
-The player UI also runs in a browser, which is useful for layout work. File dialogs and sibling subtitle discovery need the desktop shell; the browser build uses the file picker and drag-and-drop instead.
+For layout work you can run only the UI in a browser:
 
 ```bash
 npm run dev
 ```
 
-Open [http://127.0.0.1:43123/?sample=1](http://127.0.0.1:43123/?sample=1) to play the bundled sample, with captions and chapters.
+Then open <http://127.0.0.1:43123/?sample=1> to play the bundled sample from `public/sample/` with captions and chapters. In the browser, files open through the file picker or drag-and-drop. Native dialogs, Explorer integration, and automatic subtitle lookup need the desktop app.
 
-## Build
+### Scripts
 
-### Windows installers (MSI and NSIS)
+| Command                | What it does                                     |
+| ---------------------- | ------------------------------------------------ |
+| `npm run tauri dev`    | Run the desktop app in development               |
+| `npm run dev`          | Run only the UI in a browser                     |
+| `npm run build`        | Type-check (`tsc`) and build the UI into `dist/` |
+| `npm test`             | TypeScript unit tests (Vitest)                   |
+| `npm run test:rust`    | Rust unit tests (`cargo test`)                   |
+| `npm run lint`         | ESLint                                           |
+| `npm run format:check` | Check formatting with Prettier                   |
+| `npm run format`       | Fix formatting with Prettier                     |
+| `npm run tauri build`  | Build the release app and installers             |
 
-On Windows:
+Rust formatting and lints run from `src-tauri/`: `cargo fmt --check` and `cargo clippy --all-targets -- -D warnings`.
+
+### Build the Windows installer
+
+**On Windows:**
 
 ```bash
 npm install
 npm run tauri build
 ```
 
-`src-tauri/tauri.windows.conf.json` selects the Windows bundle targets. The installers are written to:
+`src-tauri/tauri.windows.conf.json` builds both installers:
 
-- `src-tauri/target/release/bundle/msi/Glint_0.1.2_x64_en-US.msi`
-- `src-tauri/target/release/bundle/nsis/Glint_0.1.2_x64-setup.exe`
+- `src-tauri/target/release/bundle/nsis/Glint_<version>_x64-setup.exe` (the one we publish)
+- `src-tauri/target/release/bundle/msi/Glint_<version>_x64_en-US.msi`
 
-NSIS installs for the current user. WiX language is `en-US`. Both register file associations for mp4, m4v, webm, mkv, mov, avi, ogv, ogg, mpeg, and mpg, so **Open with → Glint** passes the path on the command line. The NSIS installer downloads the WebView2 bootstrapper if the runtime is missing.
-
-The Windows webview is started with `--autoplay-policy=no-user-gesture-required` so a file opened from Explorer starts playing.
-
-### Linux and CI
-
-Installers are not cross-compiled. On Linux, build the binary without bundling:
+**From Linux (cross-compile, NSIS only):** this is how the published installers are built today. MSI can't be built on Linux.
 
 ```bash
-npm run tauri build -- --no-bundle
+sudo apt-get install -y nsis lld llvm clang
+rustup target add x86_64-pc-windows-msvc
+cargo install --locked cargo-xwin
+
+npm run tauri build -- --runner cargo-xwin --target x86_64-pc-windows-msvc --bundles nsis
 ```
 
-The executable is `src-tauri/target/release/glint`. With the Linux bundler tools installed, `npm run tauri build` also produces deb, rpm, and AppImage packages because the base config uses `"targets": "all"`.
+The installer is written to `src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/Glint_<version>_x64-setup.exe`. See Tauri's [Windows cross-compilation guide](https://v2.tauri.app/distribute/windows-installer/#build-windows-apps-on-linux-and-macos) for details.
 
-GitHub Actions (`.github/workflows/ci.yml`) lints, tests, and builds that binary on Ubuntu, and builds the MSI and NSIS packages on Windows.
+**Linux binary** (for testing, no installer): `npm run tauri build -- --no-bundle` writes `src-tauri/target/release/glint`.
 
-## Tests
-
-```bash
-npm test
-npm run lint
-npm run format:check
-npm run test:rust
-```
-
-TypeScript tests cover time formatting, SRT to VTT, shortcut mapping, the resume store, chapters, playlist ordering, error copy, and the player controller against a fake backend. Rust tests cover argument parsing, folder playlist and sidecar discovery, and HTTP range responses from the media server.
-
-## Keyboard shortcuts
-
-| Key          | Action                                         |
-| ------------ | ---------------------------------------------- |
-| Space, K     | Play / pause                                   |
-| J / L        | Seek −10s / +10s                               |
-| ← / →        | Seek −5s / +5s                                 |
-| ↑ / ↓        | Volume up / down                               |
-| M            | Mute                                           |
-| F            | Fullscreen                                     |
-| Double-click | Fullscreen                                     |
-| T            | Theater (maximized window; hides the menu bar) |
-| C            | Captions                                       |
-| 0–9          | Jump to 0%–90%                                 |
-| `<` / `>`    | Slower / faster (0.25×–2×)                     |
-| Home / End   | Start / end                                    |
-| Shift+N      | Next file in the folder playlist               |
-| Ctrl+O       | Open                                           |
-| Esc          | Close a menu, or leave fullscreen              |
-
-## Architecture
+### Project structure
 
 ```
-File menu, drag-drop, CLI args
-            │
-            ▼
-     Platform bridge  ──►  Rust: dialog paths, folder scan, sidecar read
-            │                    loopback media server (range requests)
-            ▼
-     PlayerController  ──►  resume store, shortcuts, chapters, SRT→VTT
-            │
-            ▼
-     PlaybackBackend
-        ├─ Html5Backend     v1, <video> in the webview
-        └─ LibmpvBackend    not implemented; same interface
-            │
-            ▼
-     PlayerView          YouTube-style controls, no playback policy
+src/
+  main.ts, app.ts       Startup and wiring between the view, controller, and platform
+  model/                Shared media types
+  player/               Playback logic, no DOM
+    backend.ts            PlaybackBackend interface (the engine seam)
+    html5-backend.ts      Current engine: a <video> element in WebView2
+    create-backend.ts     The one place an engine is chosen
+    controller.ts         PlayerController: play, seek, volume, captions, chapters
+    shortcuts.ts          YouTube key map
+    resume-store.ts       Saved position, volume, and speed
+    subtitles.ts          SRT → WebVTT
+    chapters.ts, playlist.ts, rates.ts, time.ts, errors.ts, …
+  platform/
+    tauri.ts              Desktop: Tauri commands, window, file drop
+    browser.ts            Browser fallback: file picker and drag-and-drop
+  ui/
+    view.ts               PlayerView: the DOM for the YouTube-style controls
+    icons.ts              SVG icons
+  styles.css
+src-tauri/
+  src/lib.rs            App setup and the single-instance plugin
+  src/commands.rs       Commands called from TypeScript
+  src/library.rs        Folder playlist and subtitle/chapter lookup
+  src/media_server.rs   Local video server on 127.0.0.1
+  src/range.rs          HTTP Range parsing
+  src/paths.rs          Command-line file arguments
+  tauri.conf.json       App, window, CSP, and installer settings
+tests/                  Vitest tests
+public/sample/          Sample video, subtitles, and chapters for the browser preview
+docs/                   README images
 ```
 
-### Playback interface
-
-`src/player/backend.ts` is the seam. The controller calls `load`, `play`, `pause`, `seek`, `setVolume`, `setMuted`, `setRate`, and `setSubtitles`. It never touches a `<video>` element. `src/player/create-backend.ts` is the only place an engine is constructed. v1 returns `Html5Backend`.
-
-`MediaSource` carries both a `url` (what HTML5 plays) and a `path` (what libmpv would open). Adding libmpv later means:
-
-1. Implement `PlaybackBackend` in a new class. The Rust side would own an libmpv instance and render into a native child window or a shared texture. The webview would keep drawing the controls on top, or the backend would report the same snapshots the HTML5 engine reports today.
-2. Return that backend from `createBackend()` for extensions WebView2 cannot decode, or behind a setting.
-3. Leave the controller, shortcuts, resume store, and view alone.
-
-### Why videos are served from 127.0.0.1
-
-The HTML5 engine still decodes the file. The bytes are not transcoded. A small Rust server (`src-tauri/src/media_server.rs`) binds to `127.0.0.1` on a random port and answers `Range` requests so seeking works on large files. WebView2 and WebKitGTK both do this reliably. Tauri's `asset://` protocol does not, especially on Linux, where GStreamer has no handler for that scheme.
-
-Each opened file gets an unguessable token. The server only maps tokens the user actually opened, and it dies with the process. The page CSP allows media from that loopback host.
-
-### Resume store
-
-`localStorage` key `glint.player.v1`. Each file id (the canonical path in the desktop app) stores position, volume, mute, and speed. The last volume, mute, and speed are also the defaults for a file that has never been opened. At most 200 files are kept. Captions on/off is global. A store left behind under `lumen.player.v1` is copied into the Glint key on startup, and the old key is removed.
-
-### Subtitles and chapters
-
-On open, Rust looks next to the video for:
-
-- `name.srt`, `name.vtt`, `name.en.srt`, and the same pattern for other suffixes
-- `name.chapters.json` — `[{ "start": 0, "title": "Intro" }]` or `{ "start": "1:30", "title": "Next" }`
-- `name.chapters.vtt` — a WebVTT file whose cue text is the chapter title
-
-SRT is converted in `src/player/subtitles.ts` and attached as a blob WebVTT track. The captions button toggles it. Settings can switch tracks or load another file.
-
-### Project layout
+### How it works
 
 ```
-src/player/        backend interface, HTML5 engine, controller, pure logic
-src/ui/            DOM and CSS for the YouTube-style chrome
-src/platform/      Tauri commands and the browser fallback
-src-tauri/         commands, folder/sidecar scan, loopback media server
-tests/             Vitest unit tests
+File menu, drag-and-drop, Explorer / CLI
+              │
+              ▼
+      Platform bridge ──► Rust: dialogs, folder scan, sidecar files,
+              │                 local media server (Range requests)
+              ▼
+      PlayerController ──► resume store, shortcuts, chapters, subtitles
+              │
+              ▼
+      PlaybackBackend
+        ├─ Html5Backend   today: <video> in WebView2
+        └─ LibmpvBackend  planned, same interface
+              │
+              ▼
+      PlayerView           the controls; no playback logic
 ```
 
-## Roadmap
+- **One engine seam.** The controller only talks to the `PlaybackBackend` interface in `src/player/backend.ts`, never to a `<video>` element. `MediaSource` carries both a `url` (for HTML5) and a `path` (for libmpv). Adding libmpv means writing one new backend and returning it from `createBackend()`. The controller, shortcuts, and UI stay the same.
+- **Why videos are served from 127.0.0.1.** A small Rust server (`media_server.rs`) listens on a random local port and answers HTTP `Range` requests, so seeking in large files is fast. Bytes are not transcoded. Each opened file gets an unguessable token, only opened files are served, and the server stops with the app. Tauri's `asset://` protocol was not reliable for seeking large videos.
+- **Single instance.** `tauri-plugin-single-instance` forwards files from a second launch to the open window.
+- **Saved state.** `localStorage` key `glint.player.v1`, keyed by the file's full path. Data from the old `lumen.player.v1` key is migrated on startup.
+- **Autoplay.** WebView2 starts with `--autoplay-policy=no-user-gesture-required`, so a file opened from Explorer plays right away.
 
-- **libmpv backend** for MKV, AVI, and other codecs the webview cannot decode. The interface and the `path` field are already in place. v1 shows a clear error instead of a blank video.
-- **Playlists** beyond the current folder: a visible queue, previous, and shuffle. Today the playlist is the other video files in the same folder, or the set of files dropped together in the browser preview.
-- **Thumbnail preview** on the progress bar. The hover card already shows the time and chapter title; a sprite sheet or a frame grab is the missing piece.
+### Releasing a new version
 
-Not in v1: a playlist editor, audio-only files, picture-in-picture, and remembering the window size.
+1. Bump the version in all six places:
+   - `package.json`
+   - `package-lock.json` (run `npm install` after editing `package.json`)
+   - `src-tauri/tauri.conf.json`
+   - `src-tauri/Cargo.toml`
+   - `src-tauri/Cargo.lock` (run `cargo check --manifest-path src-tauri/Cargo.toml`)
+   - Any version mentioned in this README
+2. Add the changes to [`CHANGELOG.md`](CHANGELOG.md).
+3. Make sure everything passes: `npm run lint`, `npm run format:check`, `npm test`, `npm run test:rust`.
+4. Build the installer (see [Build the Windows installer](#build-the-windows-installer)) and try it on a real Windows PC.
+5. Commit, tag (`git tag v0.1.3`), and push the tag.
+6. Create a [GitHub Release](https://github.com/Adham-ELtawil/glint/releases/new) for the tag, paste the changelog entry, and attach `Glint_<version>_x64-setup.exe`.
+
+## Contributing
+
+Bug reports and ideas are welcome in [Issues](https://github.com/Adham-ELtawil/glint/issues). For a bug, include your Windows version, the Glint version, and the video format.
+
+For pull requests, keep each one focused on one change, add or update tests, and make sure lint, format, and tests pass.
 
 ## License
 
 [MIT](LICENSE) © 2026 Adham Yasser
+
+Glint is an independent project. It is not affiliated with or endorsed by YouTube or Google.
