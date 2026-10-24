@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="src-tauri/icons/source/glint.svg" width="96" height="96" alt="Glint logo" />
+
 # Glint
 
 **A fast, simple video player for Windows that looks and feels like the YouTube player.**
@@ -264,6 +266,7 @@ src-tauri/
   src/range.rs          HTTP Range parsing
   src/paths.rs          Command-line file arguments
   tauri.conf.json       App, window, CSP, and installer settings
+  icons/                App icons generated from icons/source/ (see below)
 tests/                  Vitest tests
 public/sample/          Sample video, subtitles, and chapters for the browser preview
 docs/                   README images
@@ -295,6 +298,14 @@ File menu, drag-and-drop, Explorer / CLI
 - **Saved state.** `localStorage` key `glint.player.v1`, keyed by the file's full path. Data from the old `lumen.player.v1` key is migrated on startup.
 - **Autoplay.** WebView2 starts with `--autoplay-policy=no-user-gesture-required`, so a file opened from Explorer plays right away.
 
+### Changing the app icon
+
+The icon artwork lives in `src-tauri/icons/source/`: `glint.svg` is the master, and `glint-small.svg` is a chunkier variant that stays readable at 16 and 24 px. To regenerate the icons:
+
+1. Run `npx tauri icon src-tauri/icons/source/glint.svg -o /tmp/glint-icons` and copy the desktop files (the ones already in `src-tauri/icons/`) over the old ones. Skip the `android/` and `ios/` folders.
+2. Replace the 16 and 24 px frames in `icon.ico` with renders of `glint-small.svg`, so the taskbar and Explorer icons stay crisp.
+3. If the artwork changes, update `brandMark()` in `src/ui/icons.ts` and `public/favicon.svg` too. A test checks that the header mark matches `glint-small.svg`.
+
 ### Releasing a new version
 
 1. Bump the version in all six places:
@@ -307,7 +318,7 @@ File menu, drag-and-drop, Explorer / CLI
 2. Add the changes to [`CHANGELOG.md`](CHANGELOG.md).
 3. Make sure everything passes: `npm run lint`, `npm run format:check`, `npm test`, `npm run test:rust`.
 4. Build the installer (see [Build the Windows installer](#build-the-windows-installer)) and try it on a real Windows PC.
-5. Commit, tag (`git tag v0.1.3`), and push the tag.
+5. Commit, tag (`git tag v<version>`), and push the tag.
 6. Create a [GitHub Release](https://github.com/Adham-ELtawil/glint/releases/new) for the tag, paste the changelog entry, and attach `Glint_<version>_x64-setup.exe`.
 
 ## Contributing

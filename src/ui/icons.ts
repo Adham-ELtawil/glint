@@ -118,3 +118,19 @@ export function icon(name: IconName): string {
   const glyph = GLYPHS[name];
   return `<svg viewBox="${glyph.box ?? "0 0 24 24"}" aria-hidden="true" focusable="false">${glyph.body}</svg>`;
 }
+
+/**
+ * Glint's app mark: a four-point glint with a play triangle in its heart.
+ * Same artwork as `src-tauri/icons/source/glint-small.svg`, the variant tuned
+ * for small sizes (the header shows it at about 22px).
+ */
+export function brandMark(): string {
+  return (
+    `<svg viewBox="0 0 256 256" aria-hidden="true" focusable="false">` +
+    `<defs><linearGradient id="glint-brand-g" x1="40" y1="24" x2="216" y2="232" gradientUnits="userSpaceOnUse">` +
+    `<stop offset="0" stop-color="#ff4d6d"/><stop offset="1" stop-color="#ff8a3d"/></linearGradient></defs>` +
+    `<path fill="url(#glint-brand-g)" d="M128 2C172 56 200 84 254 128C200 172 172 200 128 254C84 200 56 172 2 128C56 84 84 56 128 2Z"/>` +
+    `<path fill="#fff" d="M105.13 95.32A10 10 0 0 1 120.13 86.66L176.74 119.34A10 10 0 0 1 176.74 136.66L120.13 169.34A10 10 0 0 1 105.13 160.68Z"/>` +
+    `</svg>`
+  );
+}
