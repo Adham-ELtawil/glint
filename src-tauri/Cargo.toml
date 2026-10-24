@@ -2,7 +2,8 @@
 name = "glint"
 version = "0.1.2"
 description = "A fast desktop video player with a YouTube-style interface"
-authors = ["Glint"]
+authors = ["Adham Yasser"]
+license = "MIT"
 edition = "2024"
 
 [lib]

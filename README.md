@@ -176,4 +176,4 @@ Not in v1: a playlist editor, audio-only files, picture-in-picture, and remember
 
 ## License
 
-No license is set yet. Add one before distributing installers.
+[MIT](LICENSE) © 2026 Adham Yasser

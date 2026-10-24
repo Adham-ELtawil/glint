@@ -34,7 +34,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "publisher": "Glint",
+    "publisher": "Adham Yasser",
     "category": "Video",
     "shortDescription": "A fast desktop video player",
     "longDescription": "Glint plays local videos with YouTube-style controls. The built-in engine supports the formats the system webview can decode. A libmpv backend is planned for everything else.",
