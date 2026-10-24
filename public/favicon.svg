@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <title>Glint</title>
+  <defs>
+    <linearGradient id="glint-g" x1="40" y1="24" x2="216" y2="232" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff4d6d"/>
+      <stop offset="1" stop-color="#ff8a3d"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#glint-g)" d="M128 4 C158 64 192 98 252 128 C192 158 158 192 128 252 C98 192 64 158 4 128 C64 98 98 64 128 4Z"/>
+  <path fill="#fff" d="M107.6 104.78 A12 12 0 0 1 125.6 94.39 L165.81 117.61 A12 12 0 0 1 165.81 138.39 L125.6 161.61 A12 12 0 0 1 107.6 151.22 Z"/>
+</svg>

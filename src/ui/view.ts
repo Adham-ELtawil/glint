@@ -3,7 +3,7 @@ import { PLAYBACK_RATES, formatRate } from "../player/rates";
 import { isTypingTarget, mapShortcut, type ShortcutAction } from "../player/shortcuts";
 import type { FlashEffect, PlayerState } from "../player/state";
 import { formatPair, formatTime } from "../player/time";
-import { icon, playPauseIcon, type IconName } from "./icons";
+import { brandMark, icon, playPauseIcon, type IconName } from "./icons";
 
 export interface ViewActions {
   openVideo(): void;
@@ -353,7 +353,7 @@ export class PlayerView {
     nav.append(this.menuButtons.file, this.menuButtons.playback, this.menuButtons.view);
     const brand = el("div", "brand");
     const mark = el("span", "brand-mark");
-    mark.innerHTML = icon("play");
+    mark.innerHTML = brandMark();
     const word = el("span", "brand-name");
     word.textContent = "Glint";
     brand.append(mark, word);

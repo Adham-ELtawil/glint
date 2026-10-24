@@ -4,10 +4,18 @@ All notable changes to Glint are listed here. The format is based on [Keep a Cha
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-10-24
+
 ### Added
 
 - New README for users and developers, with a screenshot, install steps, shortcuts, supported formats, FAQ, and a release checklist.
 - This changelog.
+
+### Changed
+
+- New Glint app icon, a coral four-point glint with a play triangle, replacing Tauri's default icon. It is used for the window, the taskbar, and Explorer, and has a simplified version for 16 and 24 px. The installer file now shows it too, instead of the default NSIS icon.
+- The brand mark in the top bar is now the Glint icon. The old red rounded square with a white play triangle looked too much like YouTube's logo.
+- The README shows the logo and explains how to regenerate the icons.
 
 ## [0.1.2] - 2026-10-24
 
@@ -40,5 +48,6 @@ All notable changes to Glint are listed here. The format is based on [Keep a Cha
 - Saved position, volume, mute, and speed for each file.
 - NSIS installer with file associations and WebView2 bootstrapper.
 
-[Unreleased]: https://github.com/Adham-ELtawil/glint/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/Adham-ELtawil/glint/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/Adham-ELtawil/glint/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/Adham-ELtawil/glint/releases/tag/v0.1.2
