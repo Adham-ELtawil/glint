@@ -530,42 +530,72 @@ video::cue {
 }
 .volume-pop {
   width: 0;
+  height: 40px;
   overflow: hidden;
   display: flex;
   align-items: center;
   transition: width 0.1s ease;
 }
+/* `is-dragging` keeps the slider open while a drag wanders off the track. */
 .volume:hover .volume-pop,
-.volume:focus-within .volume-pop {
-  width: 64px;
+.volume:focus-within .volume-pop,
+.volume.is-dragging .volume-pop {
+  width: 68px;
 }
 
+/*
+ * The input is as tall as the control bar so it is easy to grab, like
+ * YouTube's; only the 3px track inside it is drawn.
+ */
 .volume-slider {
   -webkit-appearance: none;
   appearance: none;
+  flex: none;
   width: 60px;
+  height: 40px;
+  margin: 0 4px 0 4px;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  touch-action: none;
+}
+.volume-slider:focus {
+  outline: none;
+}
+
+.volume-slider::-webkit-slider-runnable-track {
   height: 3px;
-  margin: 0 0 0 4px;
   border-radius: 99px;
   background: linear-gradient(
     to right,
     #fff var(--vol, 100%),
     rgba(255, 255, 255, 0.3) var(--vol, 100%)
   );
-  cursor: pointer;
+}
+.volume-slider::-moz-range-track {
+  height: 3px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.3);
+}
+.volume-slider::-moz-range-progress {
+  height: 3px;
+  border-radius: 99px;
+  background: #fff;
 }
 
 .volume-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 12px;
   height: 12px;
+  margin-top: -4.5px;
   border-radius: 50%;
   background: #fff;
   opacity: 0;
   transition: opacity 0.1s linear;
 }
 .volume:hover .volume-slider::-webkit-slider-thumb,
-.volume:focus-within .volume-slider::-webkit-slider-thumb {
+.volume:focus-within .volume-slider::-webkit-slider-thumb,
+.volume.is-dragging .volume-slider::-webkit-slider-thumb {
   opacity: 1;
 }
 
@@ -578,7 +608,8 @@ video::cue {
   opacity: 0;
 }
 .volume:hover .volume-slider::-moz-range-thumb,
-.volume:focus-within .volume-slider::-moz-range-thumb {
+.volume:focus-within .volume-slider::-moz-range-thumb,
+.volume.is-dragging .volume-slider::-moz-range-thumb {
   opacity: 1;
 }
 

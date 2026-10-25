@@ -35,6 +35,9 @@ export const FEEDBACK_HIDE_MS = 600;
 /** Transparent gap between chapter segments on the progress bar (YouTube uses 4px). */
 const CHAPTER_GAP_PX = 4;
 
+/** Diameter of the volume thumb; keep in sync with `.volume-slider` in styles.css. */
+const VOLUME_THUMB_PX = 12;
+
 type SettingsPage = "main" | "speed" | "subtitles";
 type MenuName = "file" | "playback" | "view";
 
@@ -558,7 +561,7 @@ export class PlayerView {
     this.volumeSlider.addEventListener("input", () => {
       this.actions.setVolume(Number(this.volumeSlider.value));
     });
-    this.volumeSlider.addEventListener("pointerup", () => this.volumeSlider.blur());
+    this.bindVolumeDrag();
     this.volumeSlider.addEventListener("keyup", () => this.volumeSlider.blur());
 
     this.progress.addEventListener("pointerdown", (event) => this.onScrubStart(event));
@@ -618,6 +621,62 @@ export class PlayerView {
       const files = [...(event.dataTransfer?.files ?? [])];
       if (files.length > 0) this.actions.filesDropped(files);
     });
+  }
+
+  /**
+   * The visible track is only 3px tall and lives in a pop-out that opens on hover.
+   * While a drag is in progress the pop-out must stay open even when the
+   * pointer drifts off the track, so the slider captures the pointer and the
+   * volume group carries `is-dragging` until the button is released.
+   */
+  private bindVolumeDrag(): void {
+    const slider = this.volumeSlider;
+    const group = slider.closest<HTMLElement>(".volume");
+    let dragging = -1;
+    const end = (event: PointerEvent) => {
+      if (event.pointerId !== dragging) return;
+      dragging = -1;
+      group?.classList.remove("is-dragging");
+      if (slider.hasPointerCapture?.(event.pointerId))
+        slider.releasePointerCapture(event.pointerId);
+      slider.blur();
+      this.scheduleHide();
+    };
+    slider.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0) return;
+      dragging = event.pointerId;
+      group?.classList.add("is-dragging");
+      try {
+        slider.setPointerCapture(event.pointerId);
+      } catch {
+        // Synthetic pointers cannot be captured. The class still holds the pop-out open.
+      }
+      this.wakeControls();
+    });
+    slider.addEventListener("pointermove", (event) => {
+      if (event.pointerId !== dragging) return;
+      const rect = slider.getBoundingClientRect();
+      if (rect.width <= 0) return;
+      // With the pointer captured the native range input stops tracking once
+      // the pointer leaves it vertically, so set the value from x ourselves.
+      // Same mapping as the native input: the thumb centre travels between
+      // half a thumb in from either end.
+      const inset = VOLUME_THUMB_PX / 2;
+      const span = Math.max(1, rect.width - VOLUME_THUMB_PX);
+      const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left - inset) / span));
+      const value = Math.round(ratio * 100) / 100;
+      if (Number(slider.value) !== value) {
+        slider.value = String(value);
+        this.actions.setVolume(value);
+      }
+    });
+    slider.addEventListener("pointerup", end);
+    slider.addEventListener("pointercancel", end);
+    slider.addEventListener("lostpointercapture", end);
+  }
+
+  isVolumeDragging(): boolean {
+    return this.volumeSlider.closest(".volume")?.classList.contains("is-dragging") ?? false;
   }
 
   private onKey(event: KeyboardEvent): void {
@@ -981,7 +1040,7 @@ export class PlayerView {
   }
 
   private pointerIdleBlocked(): boolean {
-    return this.isOverlayOpen() || this.scrubbing;
+    return this.isOverlayOpen() || this.scrubbing || this.isVolumeDragging();
   }
 }
 
