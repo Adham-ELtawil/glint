@@ -22,7 +22,14 @@ export type IconName =
   | "seek-forward"
   | "check"
   | "chevron"
-  | "back";
+  | "back"
+  | "home"
+  | "close"
+  | "plus"
+  | "folder"
+  | "more"
+  | "film"
+  | "expand";
 
 interface Glyph {
   /** viewBox; defaults to the 24px grid. Material Symbols use a 960 grid. */
@@ -91,6 +98,23 @@ const GLYPHS: Record<IconName, Glyph> = {
   },
   chevron: { body: `<path ${LINE} d="m9.4 6.4 5.6 5.6-5.6 5.6"/>` },
   back: { body: `<path ${LINE} d="M14.6 6.4 9 12l5.6 5.6"/>` },
+  home: {
+    body: `<path ${LINE} d="M3.6 10.4 12 3.6l8.4 6.8v8.4a1.6 1.6 0 0 1-1.6 1.6h-4v-6h-5.6v6h-4a1.6 1.6 0 0 1-1.6-1.6z"/>`,
+  },
+  close: { body: `<path ${LINE} d="m6.4 6.4 11.2 11.2m0-11.2L6.4 17.6"/>` },
+  plus: { body: `<path ${LINE} d="M12 5v14M5 12h14"/>` },
+  folder: {
+    body: `<path ${LINE} d="M3 7.2c0-1 .8-1.8 1.8-1.8h4.4l2 2.2h8c1 0 1.8.8 1.8 1.8v8.4c0 1-.8 1.8-1.8 1.8H4.8c-1 0-1.8-.8-1.8-1.8z"/>`,
+  },
+  more: {
+    body: `<circle cx="12" cy="5.4" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="12" cy="18.6" r="1.9"/>`,
+  },
+  film: {
+    body:
+      `<rect ${LINE} x="3" y="4.6" width="18" height="14.8" rx="2.4"/>` +
+      `<path ${SOFT} d="M10 9.2 15 12l-5 2.8z"/>`,
+  },
+  expand: { body: `<path ${LINE} d="m6.4 9.4 5.6 5.6 5.6-5.6"/>` },
 };
 
 /** Play and pause share point counts so CSS can morph one into the other. */
@@ -124,13 +148,28 @@ export function icon(name: IconName): string {
  * Same artwork as `src-tauri/icons/source/glint-small.svg`, the variant tuned
  * for small sizes (the header shows it at about 22px).
  */
-export function brandMark(): string {
+export function brandMark(gradientId = "glint-brand-g"): string {
   return (
     `<svg viewBox="0 0 256 256" aria-hidden="true" focusable="false">` +
-    `<defs><linearGradient id="glint-brand-g" x1="40" y1="24" x2="216" y2="232" gradientUnits="userSpaceOnUse">` +
+    `<defs><linearGradient id="${gradientId}" x1="40" y1="24" x2="216" y2="232" gradientUnits="userSpaceOnUse">` +
     `<stop offset="0" stop-color="#ff4d6d"/><stop offset="1" stop-color="#ff8a3d"/></linearGradient></defs>` +
-    `<path fill="url(#glint-brand-g)" d="M128 2C172 56 200 84 254 128C200 172 172 200 128 254C84 200 56 172 2 128C56 84 84 56 128 2Z"/>` +
+    `<path fill="url(#${gradientId})" d="M128 2C172 56 200 84 254 128C200 172 172 200 128 254C84 200 56 172 2 128C56 84 84 56 128 2Z"/>` +
     `<path fill="#fff" d="M105.13 95.32A10 10 0 0 1 120.13 86.66L176.74 119.34A10 10 0 0 1 176.74 136.66L120.13 169.34A10 10 0 0 1 105.13 160.68Z"/>` +
+    `</svg>`
+  );
+}
+
+/**
+ * The full-size app icon artwork (`src-tauri/icons/source/glint.svg`), for
+ * places that show the mark large, like the home screen's empty state.
+ */
+export function brandMarkLarge(gradientId = "glint-brand-lg"): string {
+  return (
+    `<svg viewBox="0 0 256 256" aria-hidden="true" focusable="false">` +
+    `<defs><linearGradient id="${gradientId}" x1="40" y1="24" x2="216" y2="232" gradientUnits="userSpaceOnUse">` +
+    `<stop offset="0" stop-color="#ff4d6d"/><stop offset="1" stop-color="#ff8a3d"/></linearGradient></defs>` +
+    `<path fill="url(#${gradientId})" d="M128 4C158 64 192 98 252 128C192 158 158 192 128 252C98 192 64 158 4 128C64 98 98 64 128 4Z"/>` +
+    `<path fill="#fff" d="M107.6 104.78A12 12 0 0 1 125.6 94.39L165.81 117.61A12 12 0 0 1 165.81 138.39L125.6 161.61A12 12 0 0 1 107.6 151.22Z"/>` +
     `</svg>`
   );
 }

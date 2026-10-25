@@ -3,6 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open } from "@tauri-apps/plugin-dialog";
+import type { FolderScan, LibraryApi, LibraryFolder, MediaInfo } from "../home/library";
 import type { OpenedMedia, PlaylistItem, SubtitleFile } from "../model/media";
 import { VIDEO_EXTENSIONS } from "../player/playlist";
 
@@ -129,6 +130,27 @@ export function watchChrome(
     handler({ fullscreen, theater: theater && !fullscreen });
   });
 }
+
+/** The home screen's folders, scanner, and thumbnail cache, in Rust. */
+export const desktopLibrary: LibraryApi = {
+  available: true,
+  folders: () => invoke<LibraryFolder[]>("library_folders"),
+  addFolder: (path) => invoke<LibraryFolder[]>("add_library_folder", { path }),
+  removeFolder: (path) => invoke<LibraryFolder[]>("remove_library_folder", { path }),
+  async pickFolder(defaultPath) {
+    const selected = await open({
+      title: "Add a folder to Home",
+      multiple: false,
+      directory: true,
+      defaultPath,
+    });
+    return asPath(selected);
+  },
+  scan: () => invoke<FolderScan[]>("scan_library"),
+  mediaInfo: (paths) => invoke<MediaInfo[]>("media_info", { paths }),
+  saveThumbnail: (path, data, duration) => invoke<void>("save_thumbnail", { path, data, duration }),
+  mediaUrl: (path) => invoke<string>("media_url", { path }),
+};
 
 function fromDto(dto: OpenedDto): OpenedMedia {
   const playlist: PlaylistItem[] = dto.playlist.map((item) => ({

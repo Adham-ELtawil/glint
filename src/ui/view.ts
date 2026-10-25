@@ -3,7 +3,7 @@ import { PLAYBACK_RATES, formatRate } from "../player/rates";
 import { isTypingTarget, mapShortcut, type ShortcutAction } from "../player/shortcuts";
 import type { FlashEffect, PlayerState } from "../player/state";
 import { formatPair, formatTime } from "../player/time";
-import { brandMark, icon, playPauseIcon, type IconName } from "./icons";
+import { brandMark, brandMarkLarge, icon, playPauseIcon, type IconName } from "./icons";
 
 export interface ViewActions {
   openVideo(): void;
@@ -23,6 +23,9 @@ export interface ViewActions {
   startOver(): void;
   shortcut(action: ShortcutAction): void;
   filesDropped(files: File[]): void;
+  goHome(): void;
+  addFolder(): void;
+  clearHistory(): void;
 }
 
 /**
@@ -98,6 +101,9 @@ export class PlayerView {
   private context!: HTMLElement;
   private drop!: HTMLElement;
   private titleEl!: HTMLElement;
+  private homeBtn!: HTMLButtonElement;
+  stage!: HTMLElement;
+  private homeActive = false;
   private menuButtons: Record<MenuName, HTMLButtonElement> = {
     file: null!,
     playback: null!,
@@ -130,7 +136,7 @@ export class PlayerView {
     this.timeTotal.textContent = pair.total;
     this.chapterTitle.textContent = state.chapterTitle ?? "";
     this.chapterEl.hidden = !state.chapterTitle;
-    this.titleEl.textContent = state.filename ?? "Glint";
+    this.titleEl.textContent = this.homeActive ? "" : (state.filename ?? "Glint");
 
     const ratio = state.duration > 0 ? state.currentTime / state.duration : 0;
     this.progress.setAttribute("aria-valuenow", String(Math.round(ratio * 100)));
@@ -339,6 +345,28 @@ export class PlayerView {
     this.hoverSegment = index;
   }
 
+  /**
+   * The home screen covers the player. While it is up, player shortcuts are
+   * off (the keys belong to the cards) and the top bar stays visible even in
+   * theater mode.
+   */
+  setHomeActive(on: boolean): void {
+    this.homeActive = on;
+    this.root.classList.toggle("is-home", on);
+    this.homeBtn.setAttribute("aria-current", on ? "page" : "false");
+    this.titleEl.textContent = on ? "" : (this.state?.filename ?? "Glint");
+    if (on) {
+      this.closeMenus();
+      this.closeSettings();
+      this.context.hidden = true;
+      this.clearFeedback();
+    }
+  }
+
+  isHomeActive(): boolean {
+    return this.homeActive;
+  }
+
   setDragHover(on: boolean): void {
     this.drop.hidden = !on;
   }
@@ -350,11 +378,27 @@ export class PlayerView {
   private build(): HTMLElement {
     const header = el("header", "menubar");
     const nav = el("nav", "menu-nav");
+    this.homeBtn = document.createElement("button");
+    this.homeBtn.type = "button";
+    this.homeBtn.className = "home-nav";
+    this.homeBtn.setAttribute("aria-label", "Home (Backspace)");
+    this.homeBtn.dataset.tip = "Home";
+    this.homeBtn.innerHTML = icon("home");
+    this.homeBtn.addEventListener("click", () => this.actions.goHome());
     this.menuButtons.file = menuButton("File");
     this.menuButtons.playback = menuButton("Playback");
     this.menuButtons.view = menuButton("View");
-    nav.append(this.menuButtons.file, this.menuButtons.playback, this.menuButtons.view);
-    const brand = el("div", "brand");
+    nav.append(
+      this.homeBtn,
+      this.menuButtons.file,
+      this.menuButtons.playback,
+      this.menuButtons.view,
+    );
+    // Like the YouTube logo, the brand goes home.
+    const brand = el("button", "brand");
+    brand.type = "button";
+    brand.setAttribute("aria-label", "Glint home");
+    brand.addEventListener("click", () => this.actions.goHome());
     const mark = el("span", "brand-mark");
     mark.innerHTML = brandMark();
     const word = el("span", "brand-name");
@@ -401,7 +445,7 @@ export class PlayerView {
 
     this.empty = el("div", "empty");
     const emptyMark = el("div", "empty-mark");
-    emptyMark.innerHTML = icon("play");
+    emptyMark.innerHTML = brandMarkLarge("glint-player-empty");
     const emptyTitle = el("h1");
     emptyTitle.textContent = "Drop a video to play";
     const emptyCopy = el("p");
@@ -543,6 +587,7 @@ export class PlayerView {
 
     const stage = el("div", "stage");
     stage.append(this.player);
+    this.stage = stage;
     const shell = el("div", "shell");
     shell.append(header, stage);
     return shell;
@@ -605,6 +650,12 @@ export class PlayerView {
     });
 
     window.addEventListener("keydown", (event) => this.onKey(event), true);
+    // The mouse's back button goes home, like a browser's back.
+    window.addEventListener("mouseup", (event) => {
+      if (event.button !== 3 || this.homeActive) return;
+      event.preventDefault();
+      this.actions.goHome();
+    });
     window.addEventListener("dragover", (event) => {
       if (this.nativeDrag) return;
       event.preventDefault();
@@ -691,6 +742,19 @@ export class PlayerView {
       return;
     }
     if (isTypingTarget(event.target)) return;
+    // On the home screen the keys belong to the cards and buttons.
+    if (this.homeActive) {
+      if (event.key === "Escape" && this.isOverlayOpen()) {
+        event.preventDefault();
+        this.closeMenus();
+      }
+      return;
+    }
+    if (isHomeKey(event) && !this.isOverlayOpen()) {
+      event.preventDefault();
+      this.actions.goHome();
+      return;
+    }
     if (this.isOverlayOpen() && event.key !== "Escape") return;
     const action = mapShortcut({
       key: event.key,
@@ -819,10 +883,17 @@ export class PlayerView {
           "Open subtitle…",
           "",
           run(() => this.actions.openSubtitle()),
+          this.homeActive,
         ),
       );
       if (this.nativeDrag) {
         this.menu.append(
+          separator(),
+          menuItem(
+            "Add folder to Home…",
+            "",
+            run(() => this.actions.addFolder()),
+          ),
           separator(),
           menuItem(
             "Quit",
@@ -837,21 +908,30 @@ export class PlayerView {
           state?.playing ? "Pause" : "Play",
           "K",
           run(() => this.actions.togglePlay()),
+          this.homeActive,
         ),
         menuItem(
           "Next",
           "Shift+N",
           run(() => this.actions.next()),
-          !state?.hasNext,
+          this.homeActive || !state?.hasNext,
         ),
         menuItem(
           state?.muted ? "Unmute" : "Mute",
           "M",
           run(() => this.actions.toggleMute()),
+          this.homeActive,
         ),
       );
     } else if (this.menuName === "view") {
       this.menu.append(
+        menuItem(
+          "Home",
+          "Backspace",
+          run(() => this.actions.goHome()),
+          this.homeActive,
+        ),
+        separator(),
         menuItem(
           state?.theater ? "Leave theater mode" : "Theater mode",
           "T",
@@ -861,6 +941,13 @@ export class PlayerView {
           state?.fullscreen ? "Exit fullscreen" : "Fullscreen",
           "F",
           run(() => this.actions.toggleFullscreen()),
+          this.homeActive,
+        ),
+        separator(),
+        menuItem(
+          "Clear watch history…",
+          "",
+          run(() => this.actions.clearHistory()),
         ),
       );
     }
@@ -1042,6 +1129,17 @@ export class PlayerView {
   private pointerIdleBlocked(): boolean {
     return this.isOverlayOpen() || this.scrubbing || this.isVolumeDragging();
   }
+}
+
+/** Backspace goes back to the home screen, like Back in a browser. */
+function isHomeKey(event: KeyboardEvent): boolean {
+  return (
+    event.key === "Backspace" &&
+    !event.ctrlKey &&
+    !event.metaKey &&
+    !event.altKey &&
+    !event.shiftKey
+  );
 }
 
 function subtitleSummary(state: PlayerState): string {

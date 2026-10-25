@@ -26,6 +26,10 @@ export interface ResumeStore {
   ): void;
   setDefaults(patch: { volume?: number; muted?: boolean; rate?: number }): void;
   setCaptions(on: boolean): void;
+  /** Drop one file's saved position and settings. */
+  forget(id: string): void;
+  /** Drop every file's saved position; keeps the default volume, mute, speed. */
+  forgetAll(): void;
 }
 
 const MAX_FILES = 200;
@@ -109,6 +113,17 @@ export function createResumeStore(storage: ResumeStorage, key = RESUME_STORAGE_K
     },
     setCaptions(on) {
       prefs = { ...prefs, captions: on };
+      save();
+    },
+    forget(id) {
+      if (!(id in prefs.files)) return;
+      const files = { ...prefs.files };
+      delete files[id];
+      prefs = { ...prefs, files };
+      save();
+    },
+    forgetAll() {
+      prefs = { ...prefs, files: {} };
       save();
     },
   };
