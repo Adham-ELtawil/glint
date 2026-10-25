@@ -6,16 +6,18 @@
 
 **A fast, simple video player for Windows that looks and feels like the YouTube player.**
 
-[![Download for Windows](https://img.shields.io/badge/download-Windows%20installer-cc0000?logo=windows)](https://github.com/Adham-ELtawil/glint/releases/latest)
+[![Download for Windows](https://img.shields.io/badge/download-Windows%20installer-ff4d6d?logo=windows)](https://github.com/Adham-ELtawil/glint/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 ![Platform: Windows 10 | 11](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078d4)
 [![Built with Tauri 2](https://img.shields.io/badge/built%20with-Tauri%202-24c8db?logo=tauri)](https://tauri.app)
 
-![Glint playing a video, with chapters, captions, and the control bar](docs/screenshot.png)
+![Glint's home screen, with Continue watching and the Videos folder](docs/home.png)
 
 </div>
 
 Open a video and the same control bar, shortcuts, and animations you already know from YouTube are there. No setup and no ads, and the installer is about 2 MB.
+
+![Glint playing a video, with chapters, captions, and the control bar](docs/screenshot.png)
 
 ## Contents
 
@@ -32,6 +34,7 @@ Open a video and the same control bar, shortcuts, and animations you already kno
 
 ## Features
 
+- **Home screen.** Glint opens to **Continue watching**, with a thumbnail and progress bar for everything you were in the middle of, and a shelf for each of your video folders, starting with Windows' **Videos** folder.
 - **YouTube-style player.** Red progress bar with buffering, hover time, and chapter segments. Play/pause, volume with a hover slider, time, chapter title, captions, settings, theater, and fullscreen. The controls fade while you watch.
 - **YouTube keyboard shortcuts.** K, J, L, the arrow keys, 0–9, `<` and `>`, and the rest. See [Keyboard shortcuts](#keyboard-shortcuts).
 - **Remembers where you stopped.** Position, volume, mute, and speed are saved for each file.
@@ -39,6 +42,7 @@ Open a video and the same control bar, shortcuts, and animations you already kno
 - **Chapters.** Add a `.chapters.json` or `.chapters.vtt` file next to the video and the progress bar splits into chapters.
 - **Folder playlist.** The other videos in the same folder become a playlist. **Next** (Shift+N) plays the next one.
 - **One window.** Opening another file from Explorer sends it to the Glint window that is already open.
+- **Private.** History, thumbnails, and settings stay on your PC. **View → Clear watch history** removes them.
 - **Animations always on.** The play/pause animations still run when Windows **Animation effects** is turned off.
 
 ## Download and install
@@ -64,6 +68,13 @@ Open a video and the same control bar, shortcuts, and animations you already kno
 - Drag a video file onto the window
 - Right-click a video in Explorer and choose **Open with → Glint**. The installer registers Glint for mp4, m4v, webm, mkv, mov, avi, ogv, ogg, mpeg, and mpg. To make it the default, choose **Open with → Choose another app**, select Glint, and tick **Always**.
 - From a terminal: `glint "C:\Videos\movie.mp4"`
+
+**Home screen.** Glint opens to its home screen unless you opened it with a file. Get back to it from the **Home** button at the top left, the Glint logo, **View → Home**, Backspace, or your mouse's back button. Playback pauses while you are there.
+
+- **Continue watching** lists the videos you played most recently, newest first, with how far you got. Click a card to resume, or right-click it for **Play from the beginning**. Hover a card and click **×**, or select it and press Delete, to remove it (there is an **Undo**). A video that was moved or deleted shows as unavailable.
+- **Folders.** Each folder gets its own shelf ("From Videos"), newest videos first. Glint looks at the folder and one level of subfolders, and skips hidden and system files. Add more folders with **Add a folder** at the bottom of the home screen or **File → Add folder to Home…**, and remove one from the **⋮** menu on its shelf. Removing a folder from Home doesn't delete anything.
+- **Thumbnails** are made from a frame about 10% into each video the first time it appears, then cached. Formats WebView2 can't decode (such as AVI or WMV) get a plain tile with the file type instead.
+- Use the arrow keys to move between cards, Enter to play, and the Menu key or Shift+F10 for the card's menu.
 
 **Playlist.** Glint lists the other videos in the same folder in natural order (`2.mp4` before `10.mp4`). At the end of a video, the end screen offers **Replay**, and **Up next** when there is another video in the folder.
 
@@ -107,6 +118,7 @@ The **right-click menu** on the video has Open, Open subtitle, Play/Pause, and F
 | T                     | Theater mode                      |
 | Shift+N               | Next video in the folder          |
 | Esc                   | Close a menu, or leave fullscreen |
+| Backspace             | Go to the home screen             |
 | Ctrl+O                | Open a video                      |
 | Ctrl+Q                | Quit                              |
 
@@ -141,8 +153,14 @@ Update to 0.1.2 or newer. Older versions turned off animations when Windows **An
 **My subtitles don't show up.**
 The subtitle file must have the same name as the video (`movie.mp4` → `movie.srt` or `movie.en.srt`) and be in the same folder. Otherwise load it from **File → Open subtitle…**. Only `.srt` and `.vtt` are supported.
 
-**Where are my settings stored?**
-On your PC, in Glint's WebView2 storage. Glint has no accounts and no telemetry, and it doesn't upload your videos or settings anywhere.
+**Where are my settings and history stored?**
+Only on your PC. Saved positions, settings, and watch history are in Glint's WebView2 storage. The list of home-screen folders is in `library.json` in Glint's app data folder (`%APPDATA%\app.glint.player`), and thumbnails are cached in `%LOCALAPPDATA%\app.glint.player\thumbnails` (the newest 2,000 are kept). Glint has no accounts and no telemetry, and it doesn't upload your videos, history, or settings anywhere.
+
+**How do I clear my watch history?**
+**View → Clear watch history…**, or **Clear history** next to Continue watching. This removes the history and saved positions but keeps your volume and speed settings, the folder list, and your video files. To remove one video, use the **×** on its card.
+
+**A folder I added says "Folder not found".**
+The folder was moved or renamed, or it is on a drive that isn't connected. Its shelf comes back when the folder does. Use the **⋮** menu to remove it from Home.
 
 ## Roadmap
 
@@ -251,17 +269,24 @@ src/
     resume-store.ts       Saved position, volume, and speed
     subtitles.ts          SRT → WebVTT
     chapters.ts, playlist.ts, rates.ts, time.ts, errors.ts, …
+  home/                 Home screen data, no DOM
+    history-store.ts      Watch history (Continue watching)
+    library.ts            Folder and scan types, the LibraryApi bridge
+    thumbnails.ts         Lazy thumbnail grabbing and caching
+    model.ts, layout.ts, format.ts
   platform/
     tauri.ts              Desktop: Tauri commands, window, file drop
     browser.ts            Browser fallback: file picker and drag-and-drop
   ui/
     view.ts               PlayerView: the DOM for the YouTube-style controls
+    home.ts               HomeView: the home screen's shelves, cards, and menus
     icons.ts              SVG icons
   styles.css
 src-tauri/
   src/lib.rs            App setup and the single-instance plugin
   src/commands.rs       Commands called from TypeScript
   src/library.rs        Folder playlist and subtitle/chapter lookup
+  src/home/             Home folders (library.json), folder scan, thumbnail cache
   src/media_server.rs   Local video server on 127.0.0.1
   src/range.rs          HTTP Range parsing
   src/paths.rs          Command-line file arguments
@@ -295,7 +320,8 @@ File menu, drag-and-drop, Explorer / CLI
 - **One engine seam.** The controller only talks to the `PlaybackBackend` interface in `src/player/backend.ts`, never to a `<video>` element. `MediaSource` carries both a `url` (for HTML5) and a `path` (for libmpv). Adding libmpv means writing one new backend and returning it from `createBackend()`. The controller, shortcuts, and UI stay the same.
 - **Why videos are served from 127.0.0.1.** A small Rust server (`media_server.rs`) listens on a random local port and answers HTTP `Range` requests, so seeking in large files is fast. Bytes are not transcoded. Each opened file gets an unguessable token, only opened files are served, and the server stops with the app. Tauri's `asset://` protocol was not reliable for seeking large videos.
 - **Single instance.** `tauri-plugin-single-instance` forwards files from a second launch to the open window.
-- **Saved state.** `localStorage` key `glint.player.v1`, keyed by the file's full path. Data from the old `lumen.player.v1` key is migrated on startup.
+- **Saved state.** `localStorage` key `glint.player.v1`, keyed by the file's full path. Data from the old `lumen.player.v1` key is migrated on startup. Watch history is `glint.history.v1`.
+- **Home screen.** Rust keeps the folder list in `library.json` in the app config folder and scans folders on a background thread (one level deep, at most 400 videos per folder, hidden and system files skipped). Thumbnails are grabbed in the webview by drawing a hidden `<video>` to a canvas, then saved by Rust as JPEGs in the app cache folder, keyed by the file's path, size, and modified time, so an edited file gets a new thumbnail.
 - **Autoplay.** WebView2 starts with `--autoplay-policy=no-user-gesture-required`, so a file opened from Explorer plays right away.
 
 ### Changing the app icon

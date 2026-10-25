@@ -4,6 +4,26 @@ All notable changes to Glint are listed here. The format is based on [Keep a Cha
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-10-25
+
+### Added
+
+- A home screen. Glint now opens to **Continue watching** and a shelf for each video folder instead of an empty player.
+  - **Continue watching** shows your most recent videos with a thumbnail, a progress bar, the length, the folder, and when you last watched. Click to resume, or right-click for **Play from the beginning**. Remove a video with the **×** on its card, the Delete key, or the right-click menu, with **Undo**. Videos that were moved or deleted show as unavailable.
+  - **Folders.** Windows' **Videos** folder is on Home by default. Add more from **Add a folder** or **File → Add folder to Home…**, and remove them from each shelf's **⋮** menu. Glint scans each folder and one level of subfolders in the background, newest first, and skips hidden and system files.
+  - **Thumbnails** are made from the video the first time it appears and cached on disk. Cards shimmer while they load, and formats WebView2 can't decode get a tile with the file type.
+  - Go home with the **Home** button, the Glint logo, **View → Home**, Backspace, or the mouse back button. Cards work with the keyboard: arrow keys, Enter, Delete, and Shift+F10.
+- **View → Clear watch history…** removes the history and saved positions after asking. Video files, folders, and your volume and speed settings are kept.
+
+### Changed
+
+- The empty screen uses the Glint star instead of a red circle with a play triangle, which looked like YouTube's logo.
+- The download badge in the README uses Glint's coral instead of YouTube red.
+
+### Fixed
+
+- The volume slider no longer closes in the middle of a drag when the pointer drifts off its thin track. It is also much easier to grab: the whole height of the control bar responds, not just the 3px line.
+
 ## [0.1.3] - 2026-10-24
 
 ### Added
@@ -48,6 +68,7 @@ All notable changes to Glint are listed here. The format is based on [Keep a Cha
 - Saved position, volume, mute, and speed for each file.
 - NSIS installer with file associations and WebView2 bootstrapper.
 
-[Unreleased]: https://github.com/Adham-ELtawil/glint/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/Adham-ELtawil/glint/compare/v0.1.4...HEAD
+[0.1.4]: https://github.com/Adham-ELtawil/glint/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/Adham-ELtawil/glint/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/Adham-ELtawil/glint/releases/tag/v0.1.2
