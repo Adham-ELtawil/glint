@@ -1,0 +1,60 @@
+name: Bug report
+description: Something in Glint doesn't work the way it should.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. Please check the [FAQ](https://github.com/Adham-ELtawil/glint#faq-and-troubleshooting) and [existing issues](https://github.com/Adham-ELtawil/glint/issues) first.
+
+        If a video won't play, see [Supported formats](https://github.com/Adham-ELtawil/glint#supported-formats). MKV, AVI, and some codecs aren't supported yet.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead?
+      placeholder: When I drag the progress bar, the video jumps back to the start.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open a video with File → Open…
+        2. Press F for fullscreen
+        3. …
+    validations:
+      required: true
+  - type: input
+    id: glint-version
+    attributes:
+      label: Glint version
+      description: Shown in Settings → Apps → Installed apps, or in the installer's file name.
+      placeholder: "0.1.5"
+    validations:
+      required: true
+  - type: input
+    id: windows-version
+    attributes:
+      label: Windows version
+      description: Press Win+R, type `winver`, and press Enter.
+      placeholder: Windows 11 24H2 (build 26100.2033)
+    validations:
+      required: true
+  - type: input
+    id: format
+    attributes:
+      label: Video file format and codec
+      description: The file extension, and the codecs if you know them. In Explorer, right-click the file → Properties → Details, or use MediaInfo.
+      placeholder: .mp4, H.264 video, AAC audio, 1080p
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: Screenshots or recordings
+      description: Drag images or short clips here. Please don't upload videos you don't have the rights to share.
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Anything that might help, such as whether it happens with every file or only one.

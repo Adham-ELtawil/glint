@@ -352,9 +352,7 @@ The icon artwork lives in `src-tauri/icons/source/`: `glint.svg` is the master, 
 
 ## Contributing
 
-Bug reports and ideas are welcome in [Issues](https://github.com/Adham-ELtawil/glint/issues). For a bug, include your Windows version, the Glint version, and the video format.
-
-For pull requests, keep each one focused on one change, add or update tests, and make sure lint, format, and tests pass.
+Bug reports, ideas, and pull requests are welcome. Open an [issue](https://github.com/Adham-ELtawil/glint/issues/new/choose) for a bug or an idea, and see [CONTRIBUTING.md](CONTRIBUTING.md) for setup, tests, and commit style. Please follow the [Code of Conduct](CODE_OF_CONDUCT.md), and report security problems privately as described in [SECURITY.md](SECURITY.md).
 
 ## License
 
