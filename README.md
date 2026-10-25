@@ -6,18 +6,23 @@
 
 **A fast, simple video player for Windows that looks and feels like the YouTube player.**
 
-[![Download for Windows](https://img.shields.io/badge/download-Windows%20installer-ff4d6d?logo=windows)](https://github.com/Adham-ELtawil/glint/releases/latest)
+[![Latest release](https://img.shields.io/github/v/release/Adham-ELtawil/glint?label=release&color=ff4d6d)](https://github.com/Adham-ELtawil/glint/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/Adham-ELtawil/glint/total?color=ff7f50)](https://github.com/Adham-ELtawil/glint/releases)
+[![CI](https://github.com/Adham-ELtawil/glint/actions/workflows/ci.yml/badge.svg)](https://github.com/Adham-ELtawil/glint/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 ![Platform: Windows 10 | 11](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078d4)
-[![Built with Tauri 2](https://img.shields.io/badge/built%20with-Tauri%202-24c8db?logo=tauri)](https://tauri.app)
 
-![Glint's home screen, with Continue watching and the Videos folder](docs/home.png)
+<img src="docs/glint-promo.gif" width="800" alt="Glint playing a video: play and pause with K, skip with J and L, jump with the number keys, and change the volume" />
+
+[![Download for Windows](https://img.shields.io/badge/Download%20for%20Windows-ff4d6d?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/Adham-ELtawil/glint/releases/latest)
+
+Free and open source · Windows 10 and 11 · about 2.5 MB
 
 </div>
 
-Open a video and the same control bar, shortcuts, and animations you already know from YouTube are there. No setup and no ads, and the installer is about 2 MB.
+Open a video and the same control bar, shortcuts, and animations you already know from YouTube are there. Glint opens to your **Continue watching** list and your video folders, so the thing you were watching is one click away. No setup, no ads, no account, and no telemetry.
 
-![Glint playing a video, with chapters, captions, and the control bar](docs/screenshot.png)
+![Glint's home screen, with Continue watching and the Videos folder](docs/home.png)
 
 ## Contents
 
@@ -45,14 +50,18 @@ Open a video and the same control bar, shortcuts, and animations you already kno
 - **Private.** History, thumbnails, and settings stay on your PC. **View → Clear watch history** removes them.
 - **Animations always on.** The play/pause animations still run when Windows **Animation effects** is turned off.
 
+![Glint playing a video, with chapters, captions, and the control bar](docs/screenshot.png)
+
 ## Download and install
 
-1. Go to the [latest release](https://github.com/Adham-ELtawil/glint/releases/latest) and download `Glint_<version>_x64-setup.exe`.
-2. Run it. Glint installs for your user account only, so it does not ask for administrator rights.
+1. Go to the [latest release](https://github.com/Adham-ELtawil/glint/releases/latest) and download `Glint_<version>_x64-setup.exe` (about 2.5 MB). Glint runs on 64-bit Windows 10 and 11.
+2. Run it. Glint installs for your user account only, so it doesn't ask for administrator rights.
 3. Open Glint from the Start menu, or right-click a video and choose **Open with → Glint**.
 
-> [!NOTE]
-> **"Windows protected your PC."** The installer is not code-signed yet, so Microsoft Defender SmartScreen warns about it. Click **More info**, then **Run anyway**. The source code is all in this repository.
+> [!IMPORTANT]
+> **"Windows protected your PC."** Glint's installer isn't code-signed yet, so the first time you run it Microsoft Defender SmartScreen shows this blue warning. That's expected for new, unsigned apps, not a sign that something is wrong. Click **More info**, then **Run anyway**.
+>
+> To check the download first, compare it with the SHA-256 in the release notes (from 0.1.5 on there is also a `.sha256` file). In PowerShell: `Get-FileHash .\Glint_<version>_x64-setup.exe`. All of Glint's source code is in this repository, and releases are built from it by the [Release workflow](.github/workflows/release.yml).
 
 **WebView2.** Glint draws its window with Microsoft Edge WebView2. It is already installed on Windows 11 and on most Windows 10 PCs. If it is missing, the installer downloads and installs it for you, which needs an internet connection.
 
@@ -296,7 +305,8 @@ src-tauri/
   icons/                App icons generated from icons/source/ (see below)
 tests/                  Vitest tests
 public/sample/          Sample video, subtitles, and chapters for the browser preview
-docs/                   README images
+docs/                   README images, the promo GIF, and the social preview
+.github/                CI and release workflows, issue and PR templates, Dependabot
 ```
 
 ### How it works
@@ -356,6 +366,8 @@ Bug reports, ideas, and pull requests are welcome. Open an [issue](https://githu
 
 ## License
 
-[MIT](LICENSE) © 2026 Adham Yasser
+[MIT](LICENSE) © 2026 Adham Yasser. Glint also includes open-source software and the Roboto font under their own licenses; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+The movie footage in the screenshots and the animation is from the Blender open movies [_Tears of Steel_](https://mango.blender.org) and [_Sintel_](https://durian.blender.org) (© Blender Foundation, CC BY 3.0) and [_Spring_](https://studio.blender.org/films/spring/) (© Blender Foundation, CC BY 4.0).
 
 Glint is an independent project. It is not affiliated with or endorsed by YouTube or Google.

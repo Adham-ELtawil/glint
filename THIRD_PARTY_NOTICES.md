@@ -436,4 +436,4 @@ Notes on the licenses that aren't MIT or Apache-2.0:
 
 ## Glint's own assets
 
-The Glint icon and logo (`src-tauri/icons/`), the sample clip in `public/sample/`, and the images in `docs/` are part of Glint and covered by its MIT license.
+The Glint icon and logo (`src-tauri/icons/`), the sample clip in `public/sample/`, and the images in `docs/` are part of Glint and covered by its MIT license. The movie footage shown in `docs/home.png`, `docs/glint-promo.gif`, and `docs/social-preview.png` is from the Blender open movies _Tears of Steel_ ([mango.blender.org](https://mango.blender.org)) and _Sintel_ ([durian.blender.org](https://durian.blender.org)), © Blender Foundation, [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/), and _Spring_ ([studio.blender.org/films/spring](https://studio.blender.org/films/spring/)), © Blender Foundation, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
