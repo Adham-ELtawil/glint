@@ -4,6 +4,8 @@ use std::sync::Mutex;
 use serde::Serialize;
 use tauri::State;
 
+use crate::home::scan::FolderScan;
+use crate::home::{FolderInfo, MediaInfo};
 use crate::library::{self, Inspection};
 use crate::media_server::MediaServer;
 
@@ -108,4 +110,70 @@ fn to_dto(media: &MediaServer, inspection: Inspection) -> Result<OpenedDto, Stri
         chapters_text: inspection.chapters_text,
         chapters_format: inspection.chapters_format,
     })
+}
+
+/// The home screen's folder list, scanner, and thumbnail cache.
+pub type Home = std::sync::Arc<crate::home::HomeStore>;
+
+#[tauri::command]
+pub fn library_folders(home: State<'_, Home>) -> Vec<FolderInfo> {
+    home.folders()
+}
+
+#[tauri::command]
+pub fn add_library_folder(home: State<'_, Home>, path: String) -> Result<Vec<FolderInfo>, String> {
+    home.add_folder(PathBuf::from(path).as_path())
+}
+
+#[tauri::command]
+pub fn remove_library_folder(
+    home: State<'_, Home>,
+    path: String,
+) -> Result<Vec<FolderInfo>, String> {
+    home.remove_folder(&path)
+}
+
+/// Reads the disk, so it runs on a blocking worker, never the UI thread.
+#[tauri::command]
+pub async fn scan_library(home: State<'_, Home>) -> Result<Vec<FolderScan>, String> {
+    let home = home.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || home.scan())
+        .await
+        .map_err(|_| "Couldn't read your folders.".to_string())
+}
+
+#[tauri::command]
+pub async fn media_info(
+    home: State<'_, Home>,
+    paths: Vec<String>,
+) -> Result<Vec<MediaInfo>, String> {
+    let home = home.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || home.media_info(&paths))
+        .await
+        .map_err(|_| "Couldn't read those files.".to_string())
+}
+
+#[tauri::command]
+pub async fn save_thumbnail(
+    home: State<'_, Home>,
+    path: String,
+    data: Option<String>,
+    duration: Option<f64>,
+) -> Result<(), String> {
+    let home = home.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        home.save_thumbnail(&path, data.as_deref(), duration)
+    })
+    .await
+    .map_err(|_| "Couldn't save the thumbnail.".to_string())?
+}
+
+/// A loopback URL for a video, used by the hidden thumbnail grabber.
+#[tauri::command]
+pub fn media_url(state: State<'_, AppState>, path: String) -> Result<String, String> {
+    let file = PathBuf::from(&path);
+    if !library::is_video_path(&file) {
+        return Err("Choose a video file.".into());
+    }
+    state.media.register(&file)
 }

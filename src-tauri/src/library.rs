@@ -193,7 +193,7 @@ fn subtitle_rank(filename: &str, stem_lower: &str) -> u8 {
     }
 }
 
-fn is_video_path(path: &Path) -> bool {
+pub fn is_video_path(path: &Path) -> bool {
     let name = file_name(path);
     if name.starts_with('.') {
         return false;
@@ -208,7 +208,7 @@ fn extension_of(path: &Path) -> String {
         .to_lowercase()
 }
 
-fn file_name(path: &Path) -> String {
+pub fn file_name(path: &Path) -> String {
     path.file_name()
         .map(|name| name.to_string_lossy().to_string())
         .unwrap_or_else(|| "video".to_string())
