@@ -347,7 +347,8 @@ The icon artwork lives in `src-tauri/icons/source/`: `glint.svg` is the master, 
 3. Make sure everything passes: `npm run lint`, `npm run format:check`, `npm test`, `npm run test:rust`.
 4. Build the installer (see [Build the Windows installer](#build-the-windows-installer)) and try it on a real Windows PC.
 5. Commit, tag (`git tag v<version>`), and push the tag.
-6. Create a [GitHub Release](https://github.com/Adham-ELtawil/glint/releases/new) for the tag, paste the changelog entry, and attach `Glint_<version>_x64-setup.exe`.
+6. The [Release workflow](.github/workflows/release.yml) builds the NSIS installer on Windows, checks that the tag matches the app version, and opens a **draft** GitHub release with `Glint_<version>_x64-setup.exe`, a `.sha256` file, and the matching `CHANGELOG.md` section as the notes.
+7. Check the draft on the [Releases](https://github.com/Adham-ELtawil/glint/releases) page, then publish it.
 
 ## Contributing
 

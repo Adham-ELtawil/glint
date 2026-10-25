@@ -1,0 +1,101 @@
+name: Release
+
+# Push a tag like v0.1.5 to build the Windows installer and open a draft
+# GitHub release with the installer, its SHA-256, and the CHANGELOG notes.
+# Review the draft, then publish it by hand.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  windows:
+    name: Build and draft the release
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Check the tag matches the app version
+        run: |
+          $tag = "${{ github.ref_name }}".TrimStart("v")
+          $conf = Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json
+          $pkg = Get-Content package.json -Raw | ConvertFrom-Json
+          if ($conf.version -ne $tag -or $pkg.version -ne $tag) {
+            Write-Error "Tag $tag does not match tauri.conf.json ($($conf.version)) or package.json ($($pkg.version))."
+            exit 1
+          }
+          "VERSION=$tag" >> $env:GITHUB_ENV
+
+      - run: npm ci
+      - run: npm test
+
+      - name: Rust unit tests
+        working-directory: src-tauri
+        run: cargo test
+
+      - name: Build the NSIS installer
+        run: npm run tauri build -- --bundles nsis
+
+      - name: Compute the SHA-256
+        run: |
+          $exe = "Glint_${env:VERSION}_x64-setup.exe"
+          $src = "src-tauri/target/release/bundle/nsis/$exe"
+          if (-not (Test-Path $src)) { Write-Error "Missing $src"; exit 1 }
+          New-Item -ItemType Directory -Force out | Out-Null
+          Copy-Item $src "out/$exe"
+          $hash = (Get-FileHash "out/$exe" -Algorithm SHA256).Hash.ToLower()
+          # Same format as sha256sum, so `sha256sum -c` works on it.
+          [IO.File]::WriteAllText("out/$exe.sha256", "$hash  $exe`n")
+          "EXE=$exe" >> $env:GITHUB_ENV
+          "SHA256=$hash" >> $env:GITHUB_ENV
+
+      - name: Extract the release notes from CHANGELOG.md
+        run: |
+          $lines = Get-Content CHANGELOG.md
+          $start = -1
+          for ($i = 0; $i -lt $lines.Count; $i++) {
+            if ($lines[$i] -match "^## \[$([regex]::Escape($env:VERSION))\]") { $start = $i + 1; break }
+          }
+          if ($start -lt 0) { Write-Error "No '## [$env:VERSION]' section in CHANGELOG.md"; exit 1 }
+          $end = $lines.Count
+          for ($i = $start; $i -lt $lines.Count; $i++) {
+            if ($lines[$i] -match "^## \[" -or $lines[$i] -match "^\[[^\]]+\]: ") { $end = $i; break }
+          }
+          $notes = ($lines[$start..($end - 1)] -join "`n").Trim()
+          $notes += "`n`n---`n`n**SHA-256** of ``$env:EXE``:`n`n``````text`n$env:SHA256`n```````n"
+          $notes += "`nThe installer is not code-signed yet. If Windows SmartScreen says ""Windows protected your PC"", click **More info**, then **Run anyway**.`n"
+          [IO.File]::WriteAllText("out/notes.md", $notes)
+          Get-Content out/notes.md
+
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ github.ref_name }}" `
+            "out/$env:EXE" "out/$env:EXE.sha256" `
+            --draft `
+            --title "Glint $env:VERSION" `
+            --notes-file out/notes.md `
+            --verify-tag
