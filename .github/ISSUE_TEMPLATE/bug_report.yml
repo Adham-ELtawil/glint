@@ -30,8 +30,8 @@ body:
     id: glint-version
     attributes:
       label: Glint version
-      description: Shown in Settings → Apps → Installed apps, or in the installer's file name.
-      placeholder: "0.1.5"
+      description: Shown in Glint's Help menu (0.1.6 and newer), in Settings → Apps → Installed apps, or in the installer's file name.
+      placeholder: "0.1.6"
     validations:
       required: true
   - type: input
