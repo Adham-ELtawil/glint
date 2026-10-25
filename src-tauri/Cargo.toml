@@ -1,6 +1,6 @@
 [package]
 name = "glint"
-version = "0.1.3"
+version = "0.1.4"
 description = "A fast desktop video player with a YouTube-style interface"
 authors = ["Adham Yasser"]
 license = "MIT"
@@ -23,6 +23,7 @@ bytes = "1"
 http-body = "1"
 tokio = { version = "1", features = ["rt", "macros", "net", "fs", "io-util", "sync", "time"] }
 uuid = { version = "1", features = ["v4"] }
+base64 = "0.21"
 
 [target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
 tauri-plugin-single-instance = "2"

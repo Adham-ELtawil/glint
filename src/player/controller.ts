@@ -15,6 +15,8 @@ export interface PlayerSink {
   onTitle(filename: string | null): void;
   onFullscreen(on: boolean): void;
   onTheater(on: boolean): void;
+  /** Called whenever the position is saved, for watch history. */
+  onProgress?(id: string, position: number, duration: number): void;
 }
 
 interface PreparedTrack extends SubtitleCueTrack {
@@ -430,6 +432,27 @@ export class PlayerController {
     if (!force && now - this.lastSave < SAVE_INTERVAL_MS) return;
     this.lastSave = now;
     this.store.updateFile(this.media.source.id, { position: snapshot.currentTime });
+    this.sink.onProgress?.(this.media.source.id, snapshot.currentTime, snapshot.duration);
+  }
+
+  /** The file that is loaded, if any. */
+  currentId(): string | null {
+    return this.media?.source.id ?? null;
+  }
+
+  /** Pause and save, e.g. when the home screen covers the player. */
+  suspend(): void {
+    if (this.backend.getSnapshot().status === "playing") this.backend.pause();
+    this.persist();
+    this.publish();
+  }
+
+  /** Resume after `suspend()`. */
+  resumePlayback(): void {
+    if (!this.canControl()) return;
+    if (this.backend.getSnapshot().status === "ended") return;
+    void this.backend.play().catch(() => {});
+    this.publish();
   }
 
   private persistAudio(): void {

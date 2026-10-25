@@ -2,7 +2,9 @@
   color-scheme: dark;
   --bg: #0f0f0f;
   --player: #000;
-  --red: #ff0000;
+  /* Glint's brand gradient (the app icon). */
+  --glint-a: #ff4d6d;
+  --glint-b: #ff8a3d;
   /* Measured from the YouTube player scrubber (rgb(255, 0, 51)). */
   --progress: #ff0033;
   --text: #fff;
@@ -93,9 +95,52 @@ input {
   display: flex;
   align-items: center;
   gap: 8px;
+  height: 32px;
+  margin: 0;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
   font-weight: 500;
   letter-spacing: 0.1px;
-  padding-right: 8px;
+  cursor: pointer;
+  transition: background-color 0.1s cubic-bezier(0.4, 0, 1, 1);
+}
+.brand:hover {
+  background: var(--hover);
+}
+
+.home-nav {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 32px;
+  margin-right: 2px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #f1f1f1;
+  cursor: pointer;
+  transition: background-color 0.1s cubic-bezier(0.4, 0, 1, 1);
+}
+.home-nav svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+  fill: currentColor;
+}
+.home-nav:hover {
+  background: var(--hover);
+}
+.home-nav[aria-current="page"] {
+  cursor: default;
+}
+.home-nav[aria-current="page"]:hover {
+  background: transparent;
 }
 
 .brand-mark {
@@ -518,6 +563,8 @@ video::cue {
 
 .icon-btn:focus-visible,
 .menu-btn:focus-visible,
+.home-nav:focus-visible,
+.brand:focus-visible,
 .open-btn:focus-visible,
 .menu-item:focus-visible,
 .settings-row:focus-visible {
@@ -530,42 +577,72 @@ video::cue {
 }
 .volume-pop {
   width: 0;
+  height: 40px;
   overflow: hidden;
   display: flex;
   align-items: center;
   transition: width 0.1s ease;
 }
+/* `is-dragging` keeps the slider open while a drag wanders off the track. */
 .volume:hover .volume-pop,
-.volume:focus-within .volume-pop {
-  width: 64px;
+.volume:focus-within .volume-pop,
+.volume.is-dragging .volume-pop {
+  width: 68px;
 }
 
+/*
+ * The input is as tall as the control bar so it is easy to grab, like
+ * YouTube's; only the 3px track inside it is drawn.
+ */
 .volume-slider {
   -webkit-appearance: none;
   appearance: none;
+  flex: none;
   width: 60px;
+  height: 40px;
+  margin: 0 4px 0 4px;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  touch-action: none;
+}
+.volume-slider:focus {
+  outline: none;
+}
+
+.volume-slider::-webkit-slider-runnable-track {
   height: 3px;
-  margin: 0 0 0 4px;
   border-radius: 99px;
   background: linear-gradient(
     to right,
     #fff var(--vol, 100%),
     rgba(255, 255, 255, 0.3) var(--vol, 100%)
   );
-  cursor: pointer;
+}
+.volume-slider::-moz-range-track {
+  height: 3px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.3);
+}
+.volume-slider::-moz-range-progress {
+  height: 3px;
+  border-radius: 99px;
+  background: #fff;
 }
 
 .volume-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 12px;
   height: 12px;
+  margin-top: -4.5px;
   border-radius: 50%;
   background: #fff;
   opacity: 0;
   transition: opacity 0.1s linear;
 }
 .volume:hover .volume-slider::-webkit-slider-thumb,
-.volume:focus-within .volume-slider::-webkit-slider-thumb {
+.volume:focus-within .volume-slider::-webkit-slider-thumb,
+.volume.is-dragging .volume-slider::-webkit-slider-thumb {
   opacity: 1;
 }
 
@@ -578,7 +655,8 @@ video::cue {
   opacity: 0;
 }
 .volume:hover .volume-slider::-moz-range-thumb,
-.volume:focus-within .volume-slider::-moz-range-thumb {
+.volume:focus-within .volume-slider::-moz-range-thumb,
+.volume.is-dragging .volume-slider::-moz-range-thumb {
   opacity: 1;
 }
 
@@ -804,28 +882,30 @@ video::cue {
 .empty-mark {
   width: 72px;
   height: 72px;
-  border-radius: 50%;
-  background: var(--red);
   display: grid;
   place-items: center;
 }
 
 .empty-mark svg {
-  width: 34px;
-  height: 34px;
-  fill: #fff;
-  margin-left: 3px;
+  width: 72px;
+  height: 72px;
+  display: block;
 }
 
 .open-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
   border: 0;
   background: #fff;
   color: #0f0f0f;
   border-radius: 18px;
-  padding: 10px 18px;
+  padding: 0 18px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
+  transition: background-color 0.15s ease;
 }
 
 .open-btn:hover {
@@ -1008,6 +1088,799 @@ video::cue {
 .app.is-theater .menubar {
   display: none;
 }
+/* The top bar is the way back from Home, so it stays in theater mode. */
+.app.is-home .menubar {
+  display: flex;
+}
+
+/* ---------------------------------------------------------------- Home */
+
+.home {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background: var(--bg);
+  --home-gutter: 24px;
+  --home-cols: 4;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+.home::-webkit-scrollbar {
+  width: 12px;
+}
+.home::-webkit-scrollbar-track {
+  background: transparent;
+}
+.home::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.2) padding-box;
+}
+.home::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.32);
+}
+
+.home-content {
+  padding: 16px var(--home-gutter) 56px;
+}
+.home.is-arriving .home-content {
+  animation: home-in 0.28s cubic-bezier(0.2, 0, 0, 1);
+}
+@keyframes home-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.shelf + .shelf {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.shelf-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 40px;
+  margin-bottom: 12px;
+}
+.shelf-titles {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  min-width: 0;
+}
+.shelf-title {
+  margin: 0;
+  flex: none;
+  max-width: 100%;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 28px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.shelf-sub {
+  min-width: 0;
+  color: var(--dim);
+  font-size: 13px;
+  line-height: 18px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.shelf-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+.shelf-note {
+  margin: -4px 0 0;
+  color: var(--dim);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(var(--home-cols), minmax(0, 1fr));
+  column-gap: 16px;
+  row-gap: 28px;
+}
+
+.card {
+  position: relative;
+  min-width: 0;
+  isolation: isolate;
+}
+.card.is-entering {
+  animation: card-in 0.36s cubic-bezier(0.2, 0, 0, 1) both;
+  animation-delay: var(--enter-delay, 0ms);
+}
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.card-main {
+  position: relative;
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  outline: none;
+}
+/* The soft plate behind a hovered or focused card. */
+.card-main::before {
+  content: "";
+  position: absolute;
+  inset: -6px -6px -10px;
+  z-index: -1;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.07);
+  opacity: 0;
+  transform: scale(0.97);
+  transition:
+    opacity 0.2s ease,
+    transform 0.25s cubic-bezier(0.2, 0, 0, 1);
+  pointer-events: none;
+}
+.card:hover .card-main::before,
+.card-main:focus-visible::before {
+  opacity: 1;
+  transform: none;
+}
+.card-main:focus-visible::before {
+  box-shadow: 0 0 0 2px #fff;
+}
+.card.is-unavailable .card-main {
+  cursor: default;
+}
+
+.thumb {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #222;
+}
+.thumb::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.07) 50%,
+    transparent 70%
+  );
+  background-size: 220% 100%;
+  animation: shimmer 1.3s linear infinite;
+  pointer-events: none;
+}
+.thumb.is-loaded::after,
+.thumb.is-fallback::after {
+  display: none;
+}
+@keyframes shimmer {
+  from {
+    background-position: 160% 0;
+  }
+  to {
+    background-position: -60% 0;
+  }
+}
+
+.thumb-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition:
+    opacity 0.3s ease,
+    transform 0.4s cubic-bezier(0.2, 0, 0, 1);
+}
+.thumb.is-loaded .thumb-img {
+  opacity: 1;
+}
+.card:hover .thumb.is-loaded .thumb-img {
+  transform: scale(1.04);
+}
+.thumb.is-fallback .thumb-img {
+  display: none;
+}
+
+.thumb-fallback {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-content: center;
+  justify-items: center;
+  gap: 6px;
+  color: rgba(255, 255, 255, 0.72);
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgba(255, 77, 109, 0.2), transparent 55%),
+    radial-gradient(120% 140% at 100% 100%, rgba(255, 138, 61, 0.14), transparent 55%), #1b1b1b;
+}
+.thumb.is-fallback .thumb-fallback {
+  display: grid;
+}
+.thumb-fallback svg {
+  width: 32px;
+  height: 32px;
+  display: block;
+  fill: currentColor;
+}
+.thumb-ext {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.6px;
+}
+.card.is-unavailable .thumb,
+.card.is-unavailable .card-title {
+  opacity: 0.5;
+}
+
+.thumb-badge {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 1;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  font-variant-numeric: tabular-nums;
+}
+.thumb:has(.thumb-progress) .thumb-badge {
+  bottom: 12px;
+}
+
+.thumb-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.35);
+}
+.thumb-progress-fill {
+  height: 100%;
+  background: var(--progress);
+}
+
+.thumb-play {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin: -24px 0 0 -24px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  transform: scale(0.85);
+  transition:
+    opacity 0.18s ease,
+    transform 0.25s cubic-bezier(0.2, 0, 0, 1);
+  pointer-events: none;
+}
+.thumb-play svg {
+  width: 26px;
+  height: 26px;
+  margin-left: 2px;
+  display: block;
+  fill: #fff;
+}
+.card:hover .thumb-play,
+.card-main:focus-visible .thumb-play {
+  opacity: 1;
+  transform: none;
+}
+.card.is-unavailable .thumb-play,
+.card.is-skeleton .thumb-play {
+  display: none;
+}
+
+.card-text {
+  padding: 12px 4px 0 2px;
+  min-width: 0;
+}
+.card-title {
+  margin: 0 0 4px;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+  unicode-bidi: plaintext;
+}
+.card-meta {
+  margin: 0;
+  color: var(--dim);
+  font-size: 14px;
+  line-height: 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  unicode-bidi: plaintext;
+}
+
+.card-remove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  cursor: pointer;
+  opacity: 0;
+  transform: scale(0.85);
+  transition:
+    opacity 0.15s ease,
+    transform 0.2s cubic-bezier(0.2, 0, 0, 1),
+    background-color 0.1s ease;
+}
+.card-remove svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+  fill: currentColor;
+}
+.card:hover .card-remove,
+.card:focus-within .card-remove {
+  opacity: 1;
+  transform: none;
+}
+.card-remove:hover {
+  background: rgba(0, 0, 0, 0.88);
+}
+
+/* Tooltips under small icon buttons on the home screen and the top bar. */
+.card-remove[data-tip]:hover::after,
+.home-icon-btn[data-tip]:hover::after,
+.home-nav[data-tip]:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  padding: 5px 8px;
+  border-radius: 4px;
+  background: rgba(28, 28, 28, 0.96);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 6;
+}
+.home-nav[data-tip]:hover::after {
+  right: auto;
+  left: 0;
+}
+.home-nav[aria-current="page"]:hover::after {
+  display: none;
+}
+
+.home-icon-btn {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #f1f1f1;
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+}
+.home-icon-btn svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+  fill: currentColor;
+}
+.home-icon-btn:hover {
+  background: var(--hover);
+}
+
+.home-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #f1f1f1;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+.home-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+.home-btn svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+  flex: none;
+  fill: currentColor;
+}
+.home-btn.is-text,
+.home-btn.is-ghost {
+  background: transparent;
+}
+.home-btn.is-text:hover,
+.home-btn.is-ghost:hover {
+  background: var(--hover);
+}
+.home-btn.is-primary {
+  background: #f1f1f1;
+  color: #0f0f0f;
+}
+.home-btn.is-primary:hover {
+  background: #d9d9d9;
+}
+.home-btn.is-outline {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.24);
+  padding: 0 16px 0 12px;
+}
+.home-btn.is-outline:hover {
+  background: var(--hover);
+}
+.home-btn.is-dashed {
+  height: 40px;
+  padding: 0 18px 0 14px;
+  border: 1px dashed rgba(255, 255, 255, 0.28);
+  border-radius: 20px;
+  background: transparent;
+  color: #f1f1f1;
+}
+.home-btn.is-dashed:hover {
+  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.05);
+}
+.home-btn.is-more {
+  padding: 0 12px 0 16px;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+}
+.home-btn.is-more:hover {
+  background: var(--hover);
+}
+.home-btn.is-more svg {
+  transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1);
+}
+.home-btn.is-more[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+
+.home-btn:focus-visible,
+.home-icon-btn:focus-visible,
+.card-remove:focus-visible,
+.home-toast-action:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.shelf-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.home-add {
+  display: flex;
+  justify-content: center;
+  margin-top: 32px;
+}
+
+/* First run: nothing watched yet and no videos in the folders. */
+.home.is-empty .home-content {
+  display: grid;
+  place-items: center;
+  min-height: 100%;
+  padding-top: 24px;
+  padding-bottom: 24px;
+}
+.home-empty {
+  display: grid;
+  justify-items: center;
+  max-width: 520px;
+  text-align: center;
+}
+.home-empty > * {
+  animation: card-in 0.42s cubic-bezier(0.2, 0, 0, 1) both;
+}
+.home-empty > :nth-child(2) {
+  animation-delay: 60ms;
+}
+.home-empty > :nth-child(3) {
+  animation-delay: 100ms;
+}
+.home-empty > :nth-child(n + 4) {
+  animation-delay: 140ms;
+}
+.home-empty-mark {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  animation-name: mark-in !important;
+  animation-duration: 0.6s !important;
+}
+.home-empty-mark::before {
+  content: "";
+  position: absolute;
+  inset: -36px;
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    rgba(255, 77, 109, 0.28),
+    rgba(255, 138, 61, 0.1) 60%,
+    transparent
+  );
+  animation: glow 3.6s ease-in-out infinite;
+  pointer-events: none;
+}
+.home-empty-mark svg {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  display: block;
+}
+@keyframes mark-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6) rotate(-45deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes glow {
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: scale(0.94);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+.home-empty h1 {
+  margin: 24px 0 8px;
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 32px;
+}
+.home-empty p {
+  margin: 0 0 24px;
+  max-width: 420px;
+  color: var(--dim);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.home-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}
+.home-empty .home-empty-note {
+  margin: 20px 0 0;
+  color: #8a8a8a;
+  font-size: 13px;
+}
+
+.skeleton-line {
+  position: relative;
+  overflow: hidden;
+  width: 90%;
+  height: 14px;
+  margin-top: 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+}
+.skeleton-line.is-short {
+  width: 55%;
+}
+.skeleton-line.is-title {
+  width: 200px;
+  height: 22px;
+  margin: 0;
+}
+
+/* While a menu is open, hover chrome on cards would peek around its edges. */
+.home.menu-open .thumb-play,
+.home.menu-open .card-remove {
+  opacity: 0;
+}
+
+.home-menu {
+  position: fixed;
+  z-index: 40;
+  /* Opaque: over bright thumbnails even 2% see-through shows shapes. */
+  background: #1c1c1c;
+  animation: panel-in 0.1s ease;
+}
+
+.home-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.6);
+  animation: fade-in 0.15s ease;
+}
+.home-dialog-panel {
+  width: min(420px, calc(100% - 32px));
+  padding: 24px;
+  border-radius: 12px;
+  background: #212121;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  animation: dialog-in 0.2s cubic-bezier(0.2, 0, 0, 1);
+}
+.home-dialog-panel h2 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 26px;
+}
+.home-dialog-panel p {
+  margin: 0 0 24px;
+  color: var(--dim);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.home-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.home-toast {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: min(480px, calc(100% - 32px));
+  min-height: 48px;
+  padding: 6px 8px 6px 16px;
+  border-radius: 8px;
+  background: #f1f1f1;
+  color: #0f0f0f;
+  font-size: 14px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+}
+.home-toast.is-showing {
+  animation: toast-in 0.22s cubic-bezier(0.2, 0, 0, 1);
+}
+.home-toast-text {
+  min-width: 0;
+  padding: 8px 0;
+}
+.home-toast-action {
+  flex: none;
+  height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 18px;
+  background: transparent;
+  color: #d12a4c;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+.home-toast-action:hover {
+  background: rgba(209, 42, 76, 0.1);
+}
+.home-toast:not(:has(.home-toast-action)) {
+  padding-right: 16px;
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.thumb-grabber {
+  position: fixed;
+  left: -10000px;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+.thumb-grabber video {
+  width: 1px;
+  height: 1px;
+}
+
+@media (max-width: 760px) {
+  .shelf-title {
+    font-size: 18px;
+  }
+  .shelf-sub {
+    display: none;
+  }
+}
 
 @media (max-width: 760px) {
   .chapter-label,
@@ -1052,7 +1925,8 @@ video::cue {
   .settings,
   .settings.panel-swap[data-dir="forward"],
   .settings.panel-swap[data-dir="back"],
-  .menu {
+  .menu,
+  .home-menu {
     animation-name: fade-in;
   }
 }

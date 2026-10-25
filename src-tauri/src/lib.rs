@@ -1,6 +1,7 @@
 mod commands;
-mod library;
-mod media_server;
+pub mod home;
+pub mod library;
+pub mod media_server;
 mod paths;
 mod range;
 
@@ -10,6 +11,22 @@ use tauri::Emitter;
 use tauri::Manager;
 
 use crate::commands::AppState;
+
+/// Folder list in the app config folder, thumbnails in the app cache folder,
+/// and the user's Videos known folder as the first-run default.
+fn open_home(app: &tauri::AppHandle) -> commands::Home {
+    let paths = app.path();
+    let config = paths
+        .app_config_dir()
+        .unwrap_or_else(|_| std::env::temp_dir().join("glint"))
+        .join("library.json");
+    let cache = paths
+        .app_cache_dir()
+        .unwrap_or_else(|_| std::env::temp_dir().join("glint"))
+        .join("thumbnails");
+    let videos = paths.video_dir().ok();
+    std::sync::Arc::new(home::HomeStore::open(config, cache, videos))
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -46,9 +63,25 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::open_video,
             commands::read_subtitle,
-            commands::take_launch_files
+            commands::take_launch_files,
+            commands::library_folders,
+            commands::add_library_folder,
+            commands::remove_library_folder,
+            commands::scan_library,
+            commands::media_info,
+            commands::save_thumbnail,
+            commands::media_url
         ])
         .setup(|app| {
+            let home = open_home(app.handle());
+            let pruning = home.clone();
+            std::thread::Builder::new()
+                .name("glint-thumb-prune".into())
+                .spawn(move || {
+                    pruning.prune_thumbnails();
+                })
+                .ok();
+            app.manage(home);
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.set_title("Glint");
             }
