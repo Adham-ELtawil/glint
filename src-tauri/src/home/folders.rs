@@ -138,7 +138,11 @@ mod tests {
         let path = dir.join("library.json");
 
         let first = load(&path, Some(&videos));
-        assert_eq!(first.folders, vec![videos.to_string_lossy().to_string()]);
+        // Seeded in canonical form (on Windows the temp dir may be an 8.3 short name).
+        assert_eq!(
+            first.folders,
+            vec![clean(&videos).to_string_lossy().to_string()]
+        );
 
         // The user removes Videos; it must not come back on the next launch.
         let emptied = remove(&first, &first.folders[0]);
