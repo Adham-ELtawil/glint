@@ -306,7 +306,7 @@ src-tauri/
 tests/                  Vitest tests
 public/sample/          Sample video, subtitles, and chapters for the browser preview
 docs/                   README images, the promo GIF, and the social preview
-.github/                CI and release workflows, issue and PR templates, Dependabot
+.github/                CI and release workflows, issue and PR templates
 ```
 
 ### How it works
