@@ -14,9 +14,13 @@ All notable changes to Glint are listed here. The format is based on [Keep a Cha
 
 ### Added
 
-- Ready for a public repository: issue forms for bugs and feature requests, a pull request template, `CONTRIBUTING.md`, `SECURITY.md` (private reporting through GitHub security advisories), `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1), and Dependabot.
+- Ready for a public repository: issue forms for bugs and feature requests, a pull request template, `CONTRIBUTING.md`, `SECURITY.md` (private reporting through GitHub security advisories), and `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1).
 - `THIRD_PARTY_NOTICES.md`, listing the Roboto font license and the licenses of the npm and Rust packages inside the app.
 - CI runs the Rust tests on Windows and keeps the installers as a build artifact. A new release workflow builds the installer from a `v*` tag and drafts a GitHub release with the installer, its SHA-256, and the changelog notes.
+
+### Fixed
+
+- Windows' **Videos** folder keeps its default label on Home when Windows spells its path differently from the one Glint saved, such as a short 8.3 name, a junction, or a folder moved into OneDrive.
 
 ## [0.1.4] - 2026-10-25
 
