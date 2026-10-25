@@ -66,7 +66,14 @@ describe("UpdateToast", () => {
     expect(buttons()).toEqual(["Later", "Try again"]);
     q(".update-toast-primary").click();
     expect(actions.retry).toHaveBeenCalledOnce();
-    toast.render({ kind: "failed", step: "check", version: null });
+    toast.render({ kind: "failed", step: "check", version: null, reason: "network" });
+    expect(buttons()).toEqual(["Close", "Try again"]);
+    expect(q(".update-toast-text").textContent).toBe(
+      "Check your internet connection and try again.",
+    );
+    toast.render({ kind: "failed", step: "check", version: null, reason: "other" });
+    expect(q(".update-toast-title").textContent).toBe("Couldn't check for updates");
+    expect(q(".update-toast-text").textContent).toBe("Try again later.");
     expect(buttons()).toEqual(["Close", "Try again"]);
   });
 

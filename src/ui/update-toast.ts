@@ -73,7 +73,10 @@ export class UpdateToast {
     if (ratio == null) this.track.removeAttribute("aria-valuenow");
     else this.track.setAttribute("aria-valuenow", String(Math.round(ratio * 100)));
     // Rebuild buttons only when the step changes, so focus survives progress.
-    const step = state.kind === "failed" ? `failed-${state.step}` : state.kind;
+    const step =
+      state.kind === "failed"
+        ? `failed-${state.step}-${state.step === "check" ? state.reason : ""}`
+        : state.kind;
     if (step !== this.shownStep) {
       this.buttons.replaceChildren();
       if (copy.secondary) this.buttons.append(button(copy.secondary, "update-toast-later"));
@@ -131,7 +134,10 @@ export class UpdateToast {
         if (state.step === "check") {
           return {
             title: "Couldn't check for updates",
-            text: "Check your internet connection and try again.",
+            text:
+              state.reason === "network"
+                ? "Check your internet connection and try again."
+                : "Try again later.",
             primary: { label: "Try again", run: () => this.actions.retry() },
             secondary: { label: "Close", run: () => this.actions.later() },
             progress: false,

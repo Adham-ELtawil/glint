@@ -8,6 +8,7 @@
 //! small progress window, no questions) and starts Glint again itself.
 
 use std::sync::Mutex;
+use std::time::Duration;
 
 use serde::Serialize;
 use tauri::ipc::Channel;
@@ -19,6 +20,13 @@ use tauri_plugin_updater::{Update, UpdaterExt};
 /// `https`. Updates are still checked against the public key built into the
 /// app, so this cannot be used to install anything Glint's key did not sign.
 pub const ENDPOINT_ENV: &str = "GLINT_UPDATE_ENDPOINT";
+
+/// The manifest of the latest published GitHub release. Same as
+/// `plugins.updater.endpoints` in `tauri.conf.json` (a test checks).
+pub const RELEASE_ENDPOINT: &str =
+    "https://github.com/Adham-ELtawil/glint/releases/latest/download/latest.json";
+
+const CHECK_TIMEOUT: Duration = Duration::from_secs(20);
 
 /// The update found by the last check, waiting for the user to accept it.
 #[derive(Default)]
@@ -58,6 +66,87 @@ pub fn endpoint_override(value: Option<&str>) -> Result<Option<Url>, String> {
     Ok(Some(url))
 }
 
+/// Why a check failed, so the UI can word it.
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum CheckErrorKind {
+    /// No connection, DNS failure, refused connection, or timeout.
+    Network,
+    /// Anything else: a server error, a malformed manifest, a bad signature.
+    Other,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct CheckError {
+    pub kind: CheckErrorKind,
+    pub message: String,
+}
+
+impl CheckError {
+    fn other(message: impl ToString) -> Self {
+        Self {
+            kind: CheckErrorKind::Other,
+            message: message.to_string(),
+        }
+    }
+}
+
+/// What a failed `check()` means.
+#[derive(Debug, PartialEq, Eq)]
+enum Failure {
+    Known(CheckErrorKind),
+    /// The updater only says the endpoint gave no usable release; look at the
+    /// HTTP status to find out whether nothing is published yet.
+    NeedsProbe,
+}
+
+fn classify_reqwest(err: &reqwest::Error) -> CheckErrorKind {
+    if err.is_connect() || err.is_timeout() {
+        CheckErrorKind::Network
+    } else {
+        CheckErrorKind::Other
+    }
+}
+
+fn classify(err: &tauri_plugin_updater::Error) -> Failure {
+    use tauri_plugin_updater::Error;
+    match err {
+        Error::Reqwest(err) => Failure::Known(classify_reqwest(err)),
+        Error::ReleaseNotFound => Failure::NeedsProbe,
+        _ => Failure::Known(CheckErrorKind::Other),
+    }
+}
+
+/// The outcome of looking at the endpoint's HTTP status directly.
+#[derive(Debug, PartialEq, Eq)]
+enum Probe {
+    /// 404 or 410: no release has a manifest yet, so there is nothing newer.
+    NotPublished,
+    Failed(CheckErrorKind),
+}
+
+fn probe_status(status: reqwest::StatusCode) -> Probe {
+    match status {
+        reqwest::StatusCode::NOT_FOUND | reqwest::StatusCode::GONE => Probe::NotPublished,
+        _ => Probe::Failed(CheckErrorKind::Other),
+    }
+}
+
+async fn probe(url: &Url) -> Probe {
+    if rustls::crypto::CryptoProvider::get_default().is_none() {
+        let _ = rustls::crypto::ring::default_provider().install_default();
+    }
+    let client = match reqwest::Client::builder().timeout(CHECK_TIMEOUT).build() {
+        Ok(client) => client,
+        Err(_) => return Probe::Failed(CheckErrorKind::Other),
+    };
+    match client.get(url.clone()).send().await {
+        Ok(response) => probe_status(response.status()),
+        Err(err) => Probe::Failed(classify_reqwest(&err)),
+    }
+}
+
 fn describe(update: &Update) -> UpdateInfo {
     UpdateInfo {
         version: update.version.clone(),
@@ -66,21 +155,45 @@ fn describe(update: &Update) -> UpdateInfo {
     }
 }
 
-/// Checks for a newer version. `None` means Glint is up to date.
+/// Checks for a newer version. `None` means Glint is up to date, which
+/// includes "no release has published an update manifest yet" (a 404).
 #[tauri::command]
 pub async fn check_update(
     app: AppHandle,
     pending: State<'_, PendingUpdate>,
-) -> Result<Option<UpdateInfo>, String> {
-    let mut builder = app.updater_builder();
+) -> Result<Option<UpdateInfo>, CheckError> {
     let custom = std::env::var(ENDPOINT_ENV).ok();
-    if let Some(url) = endpoint_override(custom.as_deref())? {
-        builder = builder
-            .endpoints(vec![url])
-            .map_err(|err| err.to_string())?;
-    }
-    let updater = builder.build().map_err(|err| err.to_string())?;
-    let update = updater.check().await.map_err(|err| err.to_string())?;
+    let url = match endpoint_override(custom.as_deref()).map_err(CheckError::other)? {
+        Some(url) => url,
+        None => Url::parse(RELEASE_ENDPOINT).map_err(CheckError::other)?,
+    };
+    let updater = app
+        .updater_builder()
+        .endpoints(vec![url.clone()])
+        .map_err(CheckError::other)?
+        .timeout(CHECK_TIMEOUT)
+        .build()
+        .map_err(CheckError::other)?;
+    let update = match updater.check().await {
+        Ok(update) => update,
+        Err(err) => {
+            let kind = match classify(&err) {
+                Failure::Known(kind) => kind,
+                Failure::NeedsProbe => match probe(&url).await {
+                    Probe::NotPublished => {
+                        *pending.0.lock().unwrap_or_else(|err| err.into_inner()) = None;
+                        return Ok(None);
+                    }
+                    Probe::Failed(kind) => kind,
+                },
+            };
+            eprintln!("update check failed ({kind:?}): {err}");
+            return Err(CheckError {
+                kind,
+                message: err.to_string(),
+            });
+        }
+    };
     let info = update.as_ref().map(describe);
     *pending.0.lock().unwrap_or_else(|err| err.into_inner()) = update;
     Ok(info)
@@ -168,6 +281,103 @@ mod tests {
         );
         let finished = serde_json::to_value(DownloadEvent::Finished).unwrap();
         assert_eq!(finished, serde_json::json!({ "event": "finished" }));
+    }
+
+    #[test]
+    fn the_release_endpoint_matches_tauri_conf() {
+        let conf: serde_json::Value =
+            serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();
+        assert_eq!(
+            conf["plugins"]["updater"]["endpoints"],
+            serde_json::json!([RELEASE_ENDPOINT])
+        );
+    }
+
+    #[test]
+    fn updater_errors_are_classified() {
+        use tauri_plugin_updater::Error;
+        assert_eq!(classify(&Error::ReleaseNotFound), Failure::NeedsProbe);
+        let bad_json = serde_json::from_str::<serde_json::Value>("{").unwrap_err();
+        assert_eq!(
+            classify(&Error::Serialization(bad_json)),
+            Failure::Known(CheckErrorKind::Other)
+        );
+        assert_eq!(
+            classify(&Error::TargetNotFound("windows-x86_64".into())),
+            Failure::Known(CheckErrorKind::Other)
+        );
+        assert_eq!(
+            classify(&Error::SignatureUtf8("x".into())),
+            Failure::Known(CheckErrorKind::Other)
+        );
+    }
+
+    #[test]
+    fn only_404_and_410_mean_not_published() {
+        use reqwest::StatusCode;
+        assert_eq!(probe_status(StatusCode::NOT_FOUND), Probe::NotPublished);
+        assert_eq!(probe_status(StatusCode::GONE), Probe::NotPublished);
+        for status in [
+            StatusCode::INTERNAL_SERVER_ERROR,
+            StatusCode::BAD_GATEWAY,
+            StatusCode::FORBIDDEN,
+            StatusCode::OK,
+        ] {
+            assert_eq!(probe_status(status), Probe::Failed(CheckErrorKind::Other));
+        }
+    }
+
+    /// A local server that answers every request with `status`.
+    async fn serve(status: u16) -> Url {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let app = axum::Router::new()
+            .fallback(move || async move { axum::http::StatusCode::from_u16(status).unwrap() });
+        tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        Url::parse(&format!("http://127.0.0.1:{port}/latest.json")).unwrap()
+    }
+
+    #[tokio::test]
+    async fn probing_a_missing_manifest_says_not_published() {
+        assert_eq!(probe(&serve(404).await).await, Probe::NotPublished);
+    }
+
+    #[tokio::test]
+    async fn probing_a_server_error_is_not_a_network_error() {
+        assert_eq!(
+            probe(&serve(503).await).await,
+            Probe::Failed(CheckErrorKind::Other)
+        );
+    }
+
+    #[tokio::test]
+    async fn a_refused_connection_is_a_network_error() {
+        // Bind and drop to get a port nothing listens on.
+        let port = std::net::TcpListener::bind("127.0.0.1:0")
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .port();
+        let url = Url::parse(&format!("http://127.0.0.1:{port}/latest.json")).unwrap();
+        assert_eq!(probe(&url).await, Probe::Failed(CheckErrorKind::Network));
+    }
+
+    #[tokio::test]
+    async fn an_unknown_host_is_a_network_error() {
+        let url = Url::parse("https://glint-update-check.invalid/latest.json").unwrap();
+        assert_eq!(probe(&url).await, Probe::Failed(CheckErrorKind::Network));
+    }
+
+    #[test]
+    fn check_errors_carry_a_kind_for_the_ui() {
+        let err = CheckError {
+            kind: CheckErrorKind::Network,
+            message: "dns error".into(),
+        };
+        assert_eq!(
+            serde_json::to_value(err).unwrap(),
+            serde_json::json!({ "kind": "network", "message": "dns error" })
+        );
     }
 
     #[test]

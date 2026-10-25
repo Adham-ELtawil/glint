@@ -1,5 +1,6 @@
 import {
   applyDownloadEvent,
+  checkFailureOf,
   isBusy,
   visibleState,
   type UpdateState,
@@ -62,7 +63,11 @@ export class UpdateController {
     } catch (error) {
       if (run !== this.run) return;
       console.warn("Update check failed:", error);
-      this.set(manual ? { kind: "failed", step: "check", version: null } : { kind: "idle" });
+      this.set(
+        manual
+          ? { kind: "failed", step: "check", version: null, reason: checkFailureOf(error) }
+          : { kind: "idle" },
+      );
       return;
     }
     if (run !== this.run) return;

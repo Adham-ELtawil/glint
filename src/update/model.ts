@@ -15,8 +15,22 @@ export type DownloadEvent =
   | { event: "progress"; data: { chunkLength: number } }
   | { event: "finished" };
 
+/** Why a check failed, as classified in Rust (`updates.rs`). */
+export type CheckFailure = "network" | "other";
+
+/** Reads the `kind` from a rejected `check_update`; anything unknown is "other". */
+export function checkFailureOf(error: unknown): CheckFailure {
+  if (typeof error === "object" && error !== null && "kind" in error) {
+    return (error as { kind: unknown }).kind === "network" ? "network" : "other";
+  }
+  return "other";
+}
+
 export interface UpdaterApi {
-  /** A newer version, or null when this one is the latest. */
+  /**
+   * A newer version, or null when this one is the latest (including when no
+   * release has published an update manifest yet). Rejects with `{ kind, message }`.
+   */
   check(): Promise<UpdateInfo | null>;
   /** Download, verify, install, and relaunch. Resolves only if it did not relaunch. */
   install(onEvent: (event: DownloadEvent) => void): Promise<void>;
@@ -29,7 +43,8 @@ export type UpdateState =
   | { kind: "downloading"; version: string; received: number; total: number | null }
   | { kind: "installing"; version: string }
   | { kind: "current"; version: string }
-  | { kind: "failed"; step: "check" | "install"; version: string | null };
+  | { kind: "failed"; step: "check"; version: null; reason: CheckFailure }
+  | { kind: "failed"; step: "install"; version: string };
 
 /** True while the download or installer is running; nothing else may start. */
 export function isBusy(state: UpdateState): boolean {

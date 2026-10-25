@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { AUTO_CHECK_DELAY_MS, CURRENT_HIDE_MS, UpdateController } from "../src/update/controller";
 import {
   applyDownloadEvent,
+  checkFailureOf,
   formatProgress,
   progressRatio,
   visibleState,
@@ -50,6 +51,15 @@ function setup(api: Partial<UpdaterApi> = {}) {
 }
 
 describe("update model", () => {
+  it("reads the failure kind from Rust's error", () => {
+    expect(checkFailureOf({ kind: "network", message: "x" })).toBe("network");
+    expect(checkFailureOf({ kind: "other", message: "x" })).toBe("other");
+    expect(checkFailureOf({ kind: "bogus" })).toBe("other");
+    expect(checkFailureOf("a plain string")).toBe("other");
+    expect(checkFailureOf(new Error("x"))).toBe("other");
+    expect(checkFailureOf(null)).toBe("other");
+  });
+
   it("folds download events into progress and then installing", () => {
     let state: UpdateState = { kind: "downloading", version: "0.1.7", received: 0, total: null };
     const events: DownloadEvent[] = [
@@ -137,15 +147,41 @@ describe("UpdateController", () => {
   it("reports a failed manual check and retries it", async () => {
     const check = vi
       .fn<UpdaterApi["check"]>()
-      .mockRejectedValueOnce(new Error("offline"))
+      .mockRejectedValueOnce({ kind: "network", message: "dns error" })
       .mockResolvedValueOnce(info);
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const { controller, last } = setup({ check });
     await controller.check(true);
-    expect(last()).toEqual({ kind: "failed", step: "check", version: null });
+    expect(last()).toEqual({ kind: "failed", step: "check", version: null, reason: "network" });
     controller.retry();
     await vi.waitFor(() => expect(last()).toEqual({ kind: "available", version: "0.1.7" }));
     warn.mockRestore();
+  });
+
+  it("words other failures neutrally and stays silent for them on startup", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const failure = { kind: "other", message: "invalid JSON" };
+    const manual = setup({ check: async () => Promise.reject(failure) });
+    await manual.controller.check(true);
+    expect(manual.last()).toEqual({
+      kind: "failed",
+      step: "check",
+      version: null,
+      reason: "other",
+    });
+    const silent = setup({ check: async () => Promise.reject(failure) });
+    await silent.controller.check(false);
+    expect(silent.rendered).toEqual([{ kind: "idle" }]);
+    warn.mockRestore();
+  });
+
+  it("treats 'no manifest published' (null from Rust) as up to date", async () => {
+    const manual = setup({ check: async () => null });
+    await manual.controller.check(true);
+    expect(manual.last()).toEqual({ kind: "current", version: "0.1.6" });
+    const silent = setup({ check: async () => null });
+    await silent.controller.check(false);
+    expect(silent.rendered).toEqual([{ kind: "idle" }]);
   });
 
   it("a silent check never replaces what is on screen", async () => {
