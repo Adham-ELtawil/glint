@@ -59,8 +59,8 @@ jobs:
       - name: Build the desktop binary without an installer
         run: npm run tauri build -- --no-bundle
 
-  windows-bundle:
-    name: Windows MSI and NSIS
+  windows:
+    name: Windows tests and installers
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -80,5 +80,20 @@ jobs:
 
       - run: npm ci
       - run: npm test
+
+      - name: Rust unit tests
+        working-directory: src-tauri
+        run: cargo test
+
       - name: Build MSI and NSIS installers
         run: npm run tauri build
+
+      - name: Upload the installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: glint-windows-installers
+          path: |
+            src-tauri/target/release/bundle/nsis/*.exe
+            src-tauri/target/release/bundle/msi/*.msi
+          if-no-files-found: error
+          retention-days: 14

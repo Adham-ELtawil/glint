@@ -1,0 +1,27 @@
+name: Feature request
+description: Suggest an idea or an improvement for Glint.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please check the [Roadmap](https://github.com/Adham-ELtawil/glint#roadmap) and [existing issues](https://github.com/Adham-ELtawil/glint/issues) first. Broader format support (MKV, AVI, HEVC) is already planned.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      placeholder: I watch lectures at 1.5×, and I have to set the speed again for every file.
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: What would you like Glint to do?
+      description: Describe how it would work. Mockups or screenshots from other apps help.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you've considered
+      description: Other apps or workarounds you use today.

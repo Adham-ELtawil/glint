@@ -6,18 +6,23 @@
 
 **A fast, simple video player for Windows that looks and feels like the YouTube player.**
 
-[![Download for Windows](https://img.shields.io/badge/download-Windows%20installer-ff4d6d?logo=windows)](https://github.com/Adham-ELtawil/glint/releases/latest)
+[![Latest release](https://img.shields.io/github/v/release/Adham-ELtawil/glint?label=release&color=ff4d6d)](https://github.com/Adham-ELtawil/glint/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/Adham-ELtawil/glint/total?color=ff7f50)](https://github.com/Adham-ELtawil/glint/releases)
+[![CI](https://github.com/Adham-ELtawil/glint/actions/workflows/ci.yml/badge.svg)](https://github.com/Adham-ELtawil/glint/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 ![Platform: Windows 10 | 11](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078d4)
-[![Built with Tauri 2](https://img.shields.io/badge/built%20with-Tauri%202-24c8db?logo=tauri)](https://tauri.app)
 
-![Glint's home screen, with Continue watching and the Videos folder](docs/home.png)
+<img src="docs/glint-promo.gif" width="800" alt="Glint playing a video: play and pause with K, skip with J and L, jump with the number keys, and change the volume" />
+
+[![Download for Windows](https://img.shields.io/badge/Download%20for%20Windows-ff4d6d?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/Adham-ELtawil/glint/releases/latest)
+
+Free and open source · Windows 10 and 11 · about 2.5 MB
 
 </div>
 
-Open a video and the same control bar, shortcuts, and animations you already know from YouTube are there. No setup and no ads, and the installer is about 2 MB.
+Open a video and the same control bar, shortcuts, and animations you already know from YouTube are there. Glint opens to your **Continue watching** list and your video folders, so the thing you were watching is one click away. No setup, no ads, no account, and no telemetry.
 
-![Glint playing a video, with chapters, captions, and the control bar](docs/screenshot.png)
+![Glint's home screen, with Continue watching and the Videos folder](docs/home.png)
 
 ## Contents
 
@@ -45,14 +50,18 @@ Open a video and the same control bar, shortcuts, and animations you already kno
 - **Private.** History, thumbnails, and settings stay on your PC. **View → Clear watch history** removes them.
 - **Animations always on.** The play/pause animations still run when Windows **Animation effects** is turned off.
 
+![Glint playing a video, with chapters, captions, and the control bar](docs/screenshot.png)
+
 ## Download and install
 
-1. Go to the [latest release](https://github.com/Adham-ELtawil/glint/releases/latest) and download `Glint_<version>_x64-setup.exe`.
-2. Run it. Glint installs for your user account only, so it does not ask for administrator rights.
+1. Go to the [latest release](https://github.com/Adham-ELtawil/glint/releases/latest) and download `Glint_<version>_x64-setup.exe` (about 2.5 MB). Glint runs on 64-bit Windows 10 and 11.
+2. Run it. Glint installs for your user account only, so it doesn't ask for administrator rights.
 3. Open Glint from the Start menu, or right-click a video and choose **Open with → Glint**.
 
-> [!NOTE]
-> **"Windows protected your PC."** The installer is not code-signed yet, so Microsoft Defender SmartScreen warns about it. Click **More info**, then **Run anyway**. The source code is all in this repository.
+> [!IMPORTANT]
+> **"Windows protected your PC."** Glint's installer isn't code-signed yet, so the first time you run it Microsoft Defender SmartScreen shows this blue warning. That's expected for new, unsigned apps, not a sign that something is wrong. Click **More info**, then **Run anyway**.
+>
+> To check the download first, compare it with the SHA-256 in the release notes (from 0.1.5 on there is also a `.sha256` file). In PowerShell: `Get-FileHash .\Glint_<version>_x64-setup.exe`. All of Glint's source code is in this repository, and releases are built from it by the [Release workflow](.github/workflows/release.yml).
 
 **WebView2.** Glint draws its window with Microsoft Edge WebView2. It is already installed on Windows 11 and on most Windows 10 PCs. If it is missing, the installer downloads and installs it for you, which needs an internet connection.
 
@@ -66,7 +75,7 @@ Open a video and the same control bar, shortcuts, and animations you already kno
 
 - **File → Open…** or Ctrl+O
 - Drag a video file onto the window
-- Right-click a video in Explorer and choose **Open with → Glint**. The installer registers Glint for mp4, m4v, webm, mkv, mov, avi, ogv, ogg, mpeg, and mpg. To make it the default, choose **Open with → Choose another app**, select Glint, and tick **Always**.
+- Right-click a video in Explorer and choose **Open with → Glint**. The installer registers Glint for **.mp4**, **.m4v**, and **.webm**, the formats it plays reliably. You can still open other files from Glint itself. To make it the default, choose **Open with → Choose another app**, select Glint, and tick **Always**.
 - From a terminal: `glint "C:\Videos\movie.mp4"`
 
 **Home screen.** Glint opens to its home screen unless you opened it with a file. Get back to it from the **Home** button at the top left, the Glint logo, **View → Home**, Backspace, or your mouse's back button. Playback pauses while you are there.
@@ -124,17 +133,19 @@ The **right-click menu** on the video has Open, Open subtitle, Play/Pause, and F
 
 ## Supported formats
 
-Glint plays what Windows WebView2 can decode. In practice:
+Glint plays what the Windows WebView2 runtime can decode. In practice:
 
-| Format                          | Status                                                        |
-| ------------------------------- | ------------------------------------------------------------- |
-| **MP4 / M4V**                   | Plays with H.264 video and AAC or MP3 audio (the most common) |
-| **WebM**                        | Plays with VP8 or VP9 video and Opus or Vorbis audio          |
-| **MOV**                         | Plays only when it contains H.264 and AAC                     |
-| **HEVC (H.265), AV1**           | Only if the matching video extension is installed in Windows  |
-| **MKV, AVI, WMV, FLV, TS, OGV** | Not yet. Glint shows a "can't be played" message              |
+| Format                                 | Status                                                                     |
+| -------------------------------------- | -------------------------------------------------------------------------- |
+| **MP4 / M4V**                          | ✅ Plays with H.264 video and AAC or MP3 audio (the most common case)      |
+| **WebM**                               | ✅ Plays with VP8, VP9, or AV1 video and Opus or Vorbis audio              |
+| **MOV**                                | ⚠️ Plays only when it contains H.264 and AAC (many iPhone videos are HEVC) |
+| **HEVC (H.265)**                       | ⚠️ Only with a hardware decoder and Microsoft's HEVC Video Extensions      |
+| **AC-3 / E-AC-3 (Dolby) audio**        | ⚠️ Only if a Dolby decoder is installed (not included in Windows 11 24H2)  |
+| **MKV, AVI, WMV, FLV, TS, MPEG, OGV**  | ❌ Not yet. Glint shows a "can't be played" message                        |
+| **DTS audio, Xvid/DivX, VC-1, MPEG-2** | ❌ Not yet                                                                 |
 
-When a file can't be played, Glint shows a clear message instead of a black screen. Support for MKV and other formats is planned through a [libmpv](https://mpv.io) backend (see the [Roadmap](#roadmap)).
+When a file can't be played, Glint tells you so instead of showing a black screen. Support for more formats, including MKV and AVI, is planned (see the [Roadmap](#roadmap)). Until then, you can convert a file to MP4 (H.264 + AAC) with a free tool like [HandBrake](https://handbrake.fr).
 
 ## FAQ and troubleshooting
 
@@ -164,7 +175,7 @@ The folder was moved or renamed, or it is on a drive that isn't connected. Its s
 
 ## Roadmap
 
-- **libmpv backend** for MKV, AVI, and other formats WebView2 can't decode. The player is already built so a second engine can be plugged in.
+- **More formats:** MKV, AVI, HEVC, and Dolby/DTS audio, which WebView2 can't play on its own. The player is already built so a second engine can be plugged in.
 - **Better playlists:** a visible queue, previous, and shuffle.
 - **Thumbnail previews** on the progress bar when you hover.
 - **A signed installer**, so SmartScreen stops warning.
@@ -294,7 +305,8 @@ src-tauri/
   icons/                App icons generated from icons/source/ (see below)
 tests/                  Vitest tests
 public/sample/          Sample video, subtitles, and chapters for the browser preview
-docs/                   README images
+docs/                   README images, the promo GIF, and the social preview
+.github/                CI and release workflows, issue and PR templates, Dependabot
 ```
 
 ### How it works
@@ -345,16 +357,17 @@ The icon artwork lives in `src-tauri/icons/source/`: `glint.svg` is the master, 
 3. Make sure everything passes: `npm run lint`, `npm run format:check`, `npm test`, `npm run test:rust`.
 4. Build the installer (see [Build the Windows installer](#build-the-windows-installer)) and try it on a real Windows PC.
 5. Commit, tag (`git tag v<version>`), and push the tag.
-6. Create a [GitHub Release](https://github.com/Adham-ELtawil/glint/releases/new) for the tag, paste the changelog entry, and attach `Glint_<version>_x64-setup.exe`.
+6. The [Release workflow](.github/workflows/release.yml) builds the NSIS installer on Windows, checks that the tag matches the app version, and opens a **draft** GitHub release with `Glint_<version>_x64-setup.exe`, a `.sha256` file, and the matching `CHANGELOG.md` section as the notes.
+7. Check the draft on the [Releases](https://github.com/Adham-ELtawil/glint/releases) page, then publish it.
 
 ## Contributing
 
-Bug reports and ideas are welcome in [Issues](https://github.com/Adham-ELtawil/glint/issues). For a bug, include your Windows version, the Glint version, and the video format.
-
-For pull requests, keep each one focused on one change, add or update tests, and make sure lint, format, and tests pass.
+Bug reports, ideas, and pull requests are welcome. Open an [issue](https://github.com/Adham-ELtawil/glint/issues/new/choose) for a bug or an idea, and see [CONTRIBUTING.md](CONTRIBUTING.md) for setup, tests, and commit style. Please follow the [Code of Conduct](CODE_OF_CONDUCT.md), and report security problems privately as described in [SECURITY.md](SECURITY.md).
 
 ## License
 
-[MIT](LICENSE) © 2026 Adham Yasser
+[MIT](LICENSE) © 2026 Adham Yasser. Glint also includes open-source software and the Roboto font under their own licenses; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+The movie footage in the screenshots and the animation is from the Blender open movies [_Tears of Steel_](https://mango.blender.org) and [_Sintel_](https://durian.blender.org) (© Blender Foundation, CC BY 3.0) and [_Spring_](https://studio.blender.org/films/spring/) (© Blender Foundation, CC BY 4.0).
 
 Glint is an independent project. It is not affiliated with or endorsed by YouTube or Google.

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/Adham-ELtawil/glint/security/advisories/new
+    about: Please report security issues privately, not as a public issue.
+  - name: A video won't play
+    url: https://github.com/Adham-ELtawil/glint#supported-formats
+    about: Check the supported formats first. MKV, AVI, and some codecs aren't supported yet.

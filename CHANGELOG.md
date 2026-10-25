@@ -4,6 +4,20 @@ All notable changes to Glint are listed here. The format is based on [Keep a Cha
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-10-25
+
+### Changed
+
+- **Open with** is registered only for `.mp4`, `.m4v`, and `.webm`, the formats Glint plays reliably. Earlier installers also registered MKV, AVI, MOV, OGV, OGG, MPEG, and MPG, which WebView2 can't play (or, for MOV, often can't), so double-clicking them opened Glint to an error. You can still open any file from inside Glint.
+- The "can't be played" message, the installer description, and the README say that support for more formats is planned, and the README's format table now covers MOV, HEVC, Dolby (AC-3/E-AC-3), and DTS accurately.
+- The README has a short animated demo, release, download, and CI badges, a clearer download section with the SmartScreen **More info → Run anyway** step and how to check the installer's SHA-256, and credits for the open movies in the screenshots.
+
+### Added
+
+- Ready for a public repository: issue forms for bugs and feature requests, a pull request template, `CONTRIBUTING.md`, `SECURITY.md` (private reporting through GitHub security advisories), `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1), and Dependabot.
+- `THIRD_PARTY_NOTICES.md`, listing the Roboto font license and the licenses of the npm and Rust packages inside the app.
+- CI runs the Rust tests on Windows and keeps the installers as a build artifact. A new release workflow builds the installer from a `v*` tag and drafts a GitHub release with the installer, its SHA-256, and the changelog notes.
+
 ## [0.1.4] - 2026-10-25
 
 ### Added
@@ -68,7 +82,8 @@ All notable changes to Glint are listed here. The format is based on [Keep a Cha
 - Saved position, volume, mute, and speed for each file.
 - NSIS installer with file associations and WebView2 bootstrapper.
 
-[Unreleased]: https://github.com/Adham-ELtawil/glint/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/Adham-ELtawil/glint/compare/v0.1.5...HEAD
+[0.1.5]: https://github.com/Adham-ELtawil/glint/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/Adham-ELtawil/glint/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/Adham-ELtawil/glint/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/Adham-ELtawil/glint/releases/tag/v0.1.2
