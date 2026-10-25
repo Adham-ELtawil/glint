@@ -69,7 +69,8 @@ describe("describeMediaError", () => {
     const copy = describeMediaError({ filename: "film.mkv", code: 4, extension: "mkv" });
     expect(copy.title).toBe("This file can't be played");
     expect(copy.body).toContain("film.mkv");
-    expect(copy.body).toContain("libmpv");
+    expect(copy.body).toContain("planned");
+    expect(copy.body).not.toContain("libmpv");
     expect(describeMediaError({ filename: "a.mp4", code: 2, extension: "mp4" }).title).toBe(
       "Playback was interrupted",
     );

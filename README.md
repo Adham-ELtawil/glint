@@ -66,7 +66,7 @@ Open a video and the same control bar, shortcuts, and animations you already kno
 
 - **File → Open…** or Ctrl+O
 - Drag a video file onto the window
-- Right-click a video in Explorer and choose **Open with → Glint**. The installer registers Glint for mp4, m4v, webm, mkv, mov, avi, ogv, ogg, mpeg, and mpg. To make it the default, choose **Open with → Choose another app**, select Glint, and tick **Always**.
+- Right-click a video in Explorer and choose **Open with → Glint**. The installer registers Glint for **.mp4**, **.m4v**, and **.webm**, the formats it plays reliably. You can still open other files from Glint itself. To make it the default, choose **Open with → Choose another app**, select Glint, and tick **Always**.
 - From a terminal: `glint "C:\Videos\movie.mp4"`
 
 **Home screen.** Glint opens to its home screen unless you opened it with a file. Get back to it from the **Home** button at the top left, the Glint logo, **View → Home**, Backspace, or your mouse's back button. Playback pauses while you are there.
@@ -124,17 +124,19 @@ The **right-click menu** on the video has Open, Open subtitle, Play/Pause, and F
 
 ## Supported formats
 
-Glint plays what Windows WebView2 can decode. In practice:
+Glint plays what the Windows WebView2 runtime can decode. In practice:
 
-| Format                          | Status                                                        |
-| ------------------------------- | ------------------------------------------------------------- |
-| **MP4 / M4V**                   | Plays with H.264 video and AAC or MP3 audio (the most common) |
-| **WebM**                        | Plays with VP8 or VP9 video and Opus or Vorbis audio          |
-| **MOV**                         | Plays only when it contains H.264 and AAC                     |
-| **HEVC (H.265), AV1**           | Only if the matching video extension is installed in Windows  |
-| **MKV, AVI, WMV, FLV, TS, OGV** | Not yet. Glint shows a "can't be played" message              |
+| Format                                 | Status                                                                     |
+| -------------------------------------- | -------------------------------------------------------------------------- |
+| **MP4 / M4V**                          | ✅ Plays with H.264 video and AAC or MP3 audio (the most common case)      |
+| **WebM**                               | ✅ Plays with VP8, VP9, or AV1 video and Opus or Vorbis audio              |
+| **MOV**                                | ⚠️ Plays only when it contains H.264 and AAC (many iPhone videos are HEVC) |
+| **HEVC (H.265)**                       | ⚠️ Only with a hardware decoder and Microsoft's HEVC Video Extensions      |
+| **AC-3 / E-AC-3 (Dolby) audio**        | ⚠️ Only if a Dolby decoder is installed (not included in Windows 11 24H2)  |
+| **MKV, AVI, WMV, FLV, TS, MPEG, OGV**  | ❌ Not yet. Glint shows a "can't be played" message                        |
+| **DTS audio, Xvid/DivX, VC-1, MPEG-2** | ❌ Not yet                                                                 |
 
-When a file can't be played, Glint shows a clear message instead of a black screen. Support for MKV and other formats is planned through a [libmpv](https://mpv.io) backend (see the [Roadmap](#roadmap)).
+When a file can't be played, Glint tells you so instead of showing a black screen. Support for more formats, including MKV and AVI, is planned (see the [Roadmap](#roadmap)). Until then, you can convert a file to MP4 (H.264 + AAC) with a free tool like [HandBrake](https://handbrake.fr).
 
 ## FAQ and troubleshooting
 
@@ -164,7 +166,7 @@ The folder was moved or renamed, or it is on a drive that isn't connected. Its s
 
 ## Roadmap
 
-- **libmpv backend** for MKV, AVI, and other formats WebView2 can't decode. The player is already built so a second engine can be plugged in.
+- **More formats:** MKV, AVI, HEVC, and Dolby/DTS audio, which WebView2 can't play on its own. The player is already built so a second engine can be plugged in.
 - **Better playlists:** a visible queue, previous, and shuffle.
 - **Thumbnail previews** on the progress bar when you hover.
 - **A signed installer**, so SmartScreen stops warning.

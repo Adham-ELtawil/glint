@@ -27,7 +27,7 @@ export function describeMediaError(input: {
   if (unsupported) {
     return {
       title: "This file can't be played",
-      body: `${input.filename} uses a format the built-in player doesn't support. Glint plays MP4 and WebM, which is what the system webview can decode. MKV and other codecs are planned with a libmpv backend.`,
+      body: `${input.filename} uses a format the built-in player doesn't support. Glint plays MP4 and WebM, which is what the system webview can decode. Support for MKV and other formats is planned.`,
     };
   }
   if (input.code === 2) {
