@@ -46,7 +46,7 @@ pub fn save(config_path: &Path, config: &LibraryConfig) -> Result<(), String> {
 fn seeded(default_folder: Option<&Path>) -> LibraryConfig {
     let folders = default_folder
         .filter(|path| path.is_dir())
-        .map(|path| vec![path.to_string_lossy().to_string()])
+        .map(|path| vec![clean(path).to_string_lossy().to_string()])
         .unwrap_or_default();
     LibraryConfig { folders }
 }

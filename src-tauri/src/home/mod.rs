@@ -170,9 +170,13 @@ impl HomeStore {
                 FolderInfo {
                     path: folder.clone(),
                     name: scan::display_name(path),
-                    is_default: default
-                        .as_deref()
-                        .is_some_and(|default| folders::same_path(default, folder)),
+                    // Compare canonical forms: an older library.json may hold the
+                    // raw path, and Windows can spell one folder several ways
+                    // (8.3 short names, junctions, case).
+                    is_default: default.as_deref().is_some_and(|default| {
+                        folders::same_path(default, folder)
+                            || folders::same_path(default, &folders::clean(path).to_string_lossy())
+                    }),
                     exists: path.is_dir(),
                 }
             })
@@ -270,5 +274,22 @@ mod tests {
         assert_eq!(reopened.folders().len(), 1);
         assert_eq!(reopened.folders()[0].name, "Movies");
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// The default folder stays marked even when it is reached through another
+    /// spelling of the same path (a symlink here; 8.3 names or junctions on Windows).
+    #[cfg(unix)]
+    #[test]
+    fn default_folder_is_recognised_through_an_alias() {
+        let dir = test_dir("home-alias");
+        let real = dir.join("RealVideos");
+        std::fs::create_dir_all(&real).unwrap();
+        let alias = dir.join("Videos");
+        std::os::unix::fs::symlink(&real, &alias).unwrap();
+        let store = HomeStore::open(dir.join("library.json"), dir.join("thumbs"), Some(alias));
+        let listed = store.folders();
+        assert_eq!(listed.len(), 1);
+        assert!(listed[0].is_default);
+        std::fs::remove_dir_all(&dir).ok();
     }
 }
