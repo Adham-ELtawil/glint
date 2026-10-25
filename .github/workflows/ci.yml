@@ -85,8 +85,11 @@ jobs:
         working-directory: src-tauri
         run: cargo test
 
+      # Pull requests have no access to the updater signing key, so they build
+      # the installers without the signed update files. Releases sign them.
       - name: Build MSI and NSIS installers
-        run: npm run tauri build
+        shell: bash
+        run: npm run tauri build -- --config '{"bundle":{"createUpdaterArtifacts":false}}'
 
       - name: Upload the installers
         uses: actions/upload-artifact@v4
