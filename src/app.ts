@@ -16,7 +16,10 @@ import { createResumeStore } from "./player/resume-store";
 import type { ShortcutAction } from "./player/shortcuts";
 import { srtToVtt, subtitleFormat } from "./player/subtitles";
 import { HomeView, type HomeActions } from "./ui/home";
+import { UpdateToast } from "./ui/update-toast";
 import { PlayerView, type ViewActions } from "./ui/view";
+import { UpdateController } from "./update/controller";
+import { APP_VERSION } from "./version";
 
 /** A rescan on returning home is skipped if the last one is this recent. */
 const RESCAN_AFTER_MS = 15_000;
@@ -64,6 +67,7 @@ export async function start(root: HTMLElement): Promise<void> {
       showHome();
       home.confirmClearHistory();
     },
+    checkForUpdates: () => void updates?.check(true),
   };
 
   const homeActions: HomeActions = {
@@ -79,10 +83,29 @@ export async function start(root: HTMLElement): Promise<void> {
     },
   };
 
+  // Updates only exist in the desktop app; the browser build has no updater.
+  const updates = native
+    ? new UpdateController(desktop.desktopUpdater, {
+        currentVersion: APP_VERSION,
+        render: (state) => updateToast.render(state),
+        // The installer quits Glint, so save the position first.
+        beforeInstall: () => player.persist(),
+      })
+    : null;
+  const updateToast = new UpdateToast({
+    update: () => void updates?.install(),
+    later: () => updates?.dismiss(),
+    retry: () => updates?.retry(),
+  });
+
   const view = new PlayerView(root, actions, native);
+  root.append(updateToast.root);
   backend.attach(view.videoSlot);
   player = new PlayerController(backend, store, {
-    onState: (state) => view.render(state),
+    onState: (state) => {
+      view.render(state);
+      updates?.setFullscreen(state.fullscreen);
+    },
     onFlash: (effect) => view.flash(effect),
     onTitle: (filename) => void setTitle(filename),
     onFullscreen: (on) => void applyFullscreen(on),
@@ -117,6 +140,7 @@ export async function start(root: HTMLElement): Promise<void> {
     } catch {
       // Window resize events are optional. Fullscreen still toggles on the button.
     }
+    updates?.scheduleAutoCheck();
     const launch = await desktop.takeLaunchFiles();
     if (launch.length > 0) await openPaths(launch);
     else showHome();

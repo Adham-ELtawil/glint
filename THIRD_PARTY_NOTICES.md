@@ -2,7 +2,7 @@
 
 Glint is [MIT](LICENSE) licensed. The Windows app and installer also include the third-party software listed here, under its own licenses. None of it is GPL or LGPL.
 
-This list was generated on 2026-10-25 for Glint 0.1.5 from the lockfiles, not written by hand:
+This list was generated on 2026-10-25 for Glint 0.1.6 from the lockfiles, not written by hand:
 
 ```bash
 # Rust crates compiled into glint.exe for Windows (no dev or build-only dependencies)
@@ -129,24 +129,27 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 
 ## Rust crates in the app
 
-`glint.exe` links **264 crates**, mostly from the Tauri, Tokio, Axum, Serde, and windows-rs ecosystems. By license:
+`glint.exe` links **284 crates**, mostly from the Tauri, Tokio, Axum, Serde, and windows-rs ecosystems. By license:
 
 | License                             | Crates |
 | ----------------------------------- | ------ |
-| Apache-2.0 OR MIT                   | 161    |
-| MIT                                 | 52     |
+| Apache-2.0 OR MIT                   | 171    |
+| MIT                                 | 56     |
 | Unicode-3.0                         | 18     |
 | MIT OR Unlicense                    | 10     |
 | MPL-2.0                             | 5      |
 | Apache-2.0 OR MIT OR Zlib           | 4      |
-| BSD-3-Clause                        | 2      |
+| BSD-3-Clause                        | 3      |
 | BSD-3-Clause AND MIT                | 2      |
 | Zlib                                | 2      |
+| Apache-2.0 OR ISC OR MIT            | 2      |
+| ISC                                 | 2      |
 | Apache-2.0                          | 2      |
 | 0BSD OR Apache-2.0 OR MIT           | 1      |
 | BSD-3-Clause OR MIT                 | 1      |
 | Apache-2.0 AND MIT                  | 1      |
 | Apache-2.0 OR CC0-1.0 OR MIT-0      | 1      |
+| Apache-2.0 AND ISC                  | 1      |
 | Apache-2.0 OR BSL-1.0               | 1      |
 | (Apache-2.0 OR MIT) AND Unicode-3.0 | 1      |
 
@@ -154,7 +157,8 @@ Notes on the licenses that aren't MIT or Apache-2.0:
 
 - **MPL-2.0** (`cssparser`, `cssparser-macros`, `selectors`, `dtoa-short`, `option-ext`): file-level copyleft. Glint uses these crates unmodified, and their source is linked below.
 - **Unicode-3.0** (the ICU4X crates, e.g. `icu_normalizer`, `zerovec`): a permissive license for Unicode data and code.
-- **BSD-3-Clause** (`alloc-no-stdlib`, `alloc-stdlib`, and with MIT `brotli`, `matchit`), **Zlib** (`foldhash`, `zlib-rs`), and **BSL-1.0** (`ryu`, as an alternative to Apache-2.0): permissive.
+- **BSD-3-Clause** (`alloc-no-stdlib`, `alloc-stdlib`, `subtle`, and with MIT `brotli`, `matchit`), **Zlib** (`foldhash`, `zlib-rs`), and **BSL-1.0** (`ryu`, as an alternative to Apache-2.0): permissive.
+- **ISC** (`rustls-webpki`, `untrusted`, and as an option for `rustls` and `hyper-rustls`) and **Apache-2.0 AND ISC** (`ring`, the cryptography behind the updater's HTTPS connection): permissive.
 
 <details>
 <summary>All Rust crates</summary>
@@ -170,6 +174,7 @@ Notes on the licenses that aren't MIT or Apache-2.0:
 | `axum`                         | 0.8.9            | MIT                                 | https://github.com/tokio-rs/axum                              |
 | `axum-core`                    | 0.5.6            | MIT                                 | https://github.com/tokio-rs/axum                              |
 | `base64`                       | 0.21.7           | Apache-2.0 OR MIT                   | https://github.com/marshallpierce/rust-base64                 |
+| `base64`                       | 0.22.1           | Apache-2.0 OR MIT                   | https://github.com/marshallpierce/rust-base64                 |
 | `base64`                       | 0.23.1           | Apache-2.0 OR MIT                   | https://github.com/marshallpierce/rust-base64                 |
 | `bit-set`                      | 0.8.0            | Apache-2.0 OR MIT                   | https://github.com/contain-rs/bit-set                         |
 | `bit-vec`                      | 0.8.0            | Apache-2.0 OR MIT                   | https://github.com/contain-rs/bit-vec                         |
@@ -231,6 +236,7 @@ Notes on the licenses that aren't MIT or Apache-2.0:
 | `futures-task`                 | 0.3.34           | Apache-2.0 OR MIT                   | https://github.com/rust-lang/futures-rs                       |
 | `futures-util`                 | 0.3.34           | Apache-2.0 OR MIT                   | https://github.com/rust-lang/futures-rs                       |
 | `generic-array`                | 0.14.7           | MIT                                 | https://github.com/fizyk20/generic-array.git                  |
+| `getrandom`                    | 0.2.17           | Apache-2.0 OR MIT                   | https://github.com/rust-random/getrandom                      |
 | `getrandom`                    | 0.3.4            | Apache-2.0 OR MIT                   | https://github.com/rust-random/getrandom                      |
 | `getrandom`                    | 0.4.3            | Apache-2.0 OR MIT                   | https://github.com/rust-random/getrandom                      |
 | `glob`                         | 0.3.4            | Apache-2.0 OR MIT                   | https://github.com/rust-lang/glob                             |
@@ -245,6 +251,7 @@ Notes on the licenses that aren't MIT or Apache-2.0:
 | `httparse`                     | 1.10.1           | Apache-2.0 OR MIT                   | https://github.com/seanmonstar/httparse                       |
 | `httpdate`                     | 1.0.3            | Apache-2.0 OR MIT                   | https://github.com/pyfisch/httpdate                           |
 | `hyper`                        | 1.12.0           | MIT                                 | https://github.com/hyperium/hyper                             |
+| `hyper-rustls`                 | 0.27.10          | Apache-2.0 OR ISC OR MIT            | https://github.com/rustls/hyper-rustls                        |
 | `hyper-util`                   | 0.1.21           | MIT                                 | https://github.com/hyperium/hyper-util                        |
 | `ico`                          | 0.6.0            | MIT                                 | https://github.com/mdsteele/rust-ico                          |
 | `icu_collections`              | 2.4.0            | Unicode-3.0                         | https://github.com/unicode-org/icu4x                          |
@@ -277,6 +284,7 @@ Notes on the licenses that aren't MIT or Apache-2.0:
 | `matchit`                      | 0.8.4            | BSD-3-Clause AND MIT                | https://github.com/ibraheemdev/matchit                        |
 | `memchr`                       | 2.8.3            | MIT OR Unlicense                    | https://github.com/BurntSushi/memchr                          |
 | `mime`                         | 0.3.17           | Apache-2.0 OR MIT                   | https://github.com/hyperium/mime                              |
+| `minisign-verify`              | 0.3.0            | MIT                                 | https://github.com/jedisct1/rust-minisign-verify              |
 | `miniz_oxide`                  | 0.8.9            | Apache-2.0 OR MIT OR Zlib           | https://github.com/Frommi/miniz_oxide/tree/master/miniz_oxide |
 | `miniz_oxide`                  | 0.9.1            | Apache-2.0 OR MIT OR Zlib           | https://github.com/Frommi/miniz_oxide/tree/master/miniz_oxide |
 | `mio`                          | 1.2.4            | MIT                                 | https://github.com/tokio-rs/mio                               |
@@ -308,8 +316,14 @@ Notes on the licenses that aren't MIT or Apache-2.0:
 | `regex`                        | 1.13.1           | Apache-2.0 OR MIT                   | https://github.com/rust-lang/regex                            |
 | `regex-automata`               | 0.4.18           | Apache-2.0 OR MIT                   | https://github.com/rust-lang/regex                            |
 | `regex-syntax`                 | 0.8.11           | Apache-2.0 OR MIT                   | https://github.com/rust-lang/regex                            |
+| `reqwest`                      | 0.13.5           | Apache-2.0 OR MIT                   | https://github.com/seanmonstar/reqwest                        |
 | `rfd`                          | 0.16.1           | MIT                                 | https://github.com/PolyMeilex/rfd                             |
+| `ring`                         | 0.17.14          | Apache-2.0 AND ISC                  | https://github.com/briansmith/ring                            |
 | `rustc-hash`                   | 2.1.3            | Apache-2.0 OR MIT                   | https://github.com/rust-lang/rustc-hash                       |
+| `rustls`                       | 0.23.46          | Apache-2.0 OR ISC OR MIT            | https://github.com/rustls/rustls                              |
+| `rustls-pki-types`             | 1.15.1           | Apache-2.0 OR MIT                   | https://github.com/rustls/pki-types                           |
+| `rustls-platform-verifier`     | 0.7.1            | Apache-2.0 OR MIT                   | https://github.com/rustls/rustls-platform-verifier            |
+| `rustls-webpki`                | 0.103.16         | ISC                                 | https://github.com/rustls/webpki                              |
 | `ryu`                          | 1.0.23           | Apache-2.0 OR BSL-1.0               | https://github.com/dtolnay/ryu                                |
 | `same-file`                    | 1.0.6            | MIT OR Unlicense                    | https://github.com/BurntSushi/same-file                       |
 | `schemars`                     | 0.8.22           | MIT                                 | https://github.com/GREsau/schemars                            |
@@ -344,6 +358,7 @@ Notes on the licenses that aren't MIT or Apache-2.0:
 | `stable_deref_trait`           | 1.2.1            | Apache-2.0 OR MIT                   | https://github.com/storyyeller/stable_deref_trait             |
 | `string_cache`                 | 0.9.0            | Apache-2.0 OR MIT                   | https://github.com/servo/string-cache                         |
 | `strsim`                       | 0.11.1           | MIT                                 | https://github.com/rapidfuzz/strsim-rs                        |
+| `subtle`                       | 2.6.1            | BSD-3-Clause                        | https://github.com/dalek-cryptography/subtle                  |
 | `syn`                          | 2.0.119          | Apache-2.0 OR MIT                   | https://github.com/dtolnay/syn                                |
 | `syn`                          | 3.0.9            | Apache-2.0 OR MIT                   | https://github.com/dtolnay/syn                                |
 | `sync_wrapper`                 | 1.0.2            | Apache-2.0                          | https://github.com/Actyx/sync_wrapper                         |
@@ -355,9 +370,11 @@ Notes on the licenses that aren't MIT or Apache-2.0:
 | `tauri-plugin-dialog`          | 2.8.3            | Apache-2.0 OR MIT                   | https://github.com/tauri-apps/plugins-workspace               |
 | `tauri-plugin-fs`              | 2.7.1            | Apache-2.0 OR MIT                   | https://github.com/tauri-apps/plugins-workspace               |
 | `tauri-plugin-single-instance` | 2.5.4            | Apache-2.0 OR MIT                   | https://github.com/tauri-apps/plugins-workspace               |
+| `tauri-plugin-updater`         | 2.14.0           | Apache-2.0 OR MIT                   | https://github.com/tauri-apps/plugins-workspace               |
 | `tauri-runtime`                | 2.12.2           | Apache-2.0 OR MIT                   | https://github.com/tauri-apps/tauri                           |
 | `tauri-runtime-wry`            | 2.12.3           | Apache-2.0 OR MIT                   | https://github.com/tauri-apps/tauri                           |
 | `tauri-utils`                  | 2.10.2           | Apache-2.0 OR MIT                   | https://github.com/tauri-apps/tauri                           |
+| `tempfile`                     | 3.27.0           | Apache-2.0 OR MIT                   | https://github.com/Stebalien/tempfile                         |
 | `tendril`                      | 0.5.1            | Apache-2.0 OR MIT                   | https://github.com/servo/html5ever                            |
 | `thiserror`                    | 2.0.21           | Apache-2.0 OR MIT                   | https://github.com/dtolnay/thiserror                          |
 | `thiserror-impl`               | 2.0.21           | Apache-2.0 OR MIT                   | https://github.com/dtolnay/thiserror                          |
@@ -368,11 +385,14 @@ Notes on the licenses that aren't MIT or Apache-2.0:
 | `tinyvec`                      | 1.13.3           | Apache-2.0 OR MIT OR Zlib           | https://github.com/Lokathor/tinyvec                           |
 | `tokio`                        | 1.54.1           | MIT                                 | https://github.com/tokio-rs/tokio                             |
 | `tokio-macros`                 | 2.7.2            | MIT                                 | https://github.com/tokio-rs/tokio                             |
+| `tokio-rustls`                 | 0.26.6           | Apache-2.0 OR MIT                   | https://github.com/rustls/tokio-rustls                        |
+| `tokio-util`                   | 0.7.20           | MIT                                 | https://github.com/tokio-rs/tokio                             |
 | `toml`                         | 1.1.8+spec-1.1.0 | Apache-2.0 OR MIT                   | https://github.com/toml-rs/toml                               |
 | `toml_datetime`                | 1.1.2+spec-1.1.0 | Apache-2.0 OR MIT                   | https://github.com/toml-rs/toml                               |
 | `toml_parser`                  | 1.1.5+spec-1.1.0 | Apache-2.0 OR MIT                   | https://github.com/toml-rs/toml                               |
 | `toml_writer`                  | 1.1.3+spec-1.1.0 | Apache-2.0 OR MIT                   | https://github.com/toml-rs/toml                               |
 | `tower`                        | 0.5.3            | MIT                                 | https://github.com/tower-rs/tower                             |
+| `tower-http`                   | 0.6.11           | MIT                                 | https://github.com/tower-rs/tower-http                        |
 | `tower-layer`                  | 0.3.3            | MIT                                 | https://github.com/tower-rs/tower                             |
 | `tower-service`                | 0.3.3            | MIT                                 | https://github.com/tower-rs/tower                             |
 | `tracing`                      | 0.1.44           | MIT                                 | https://github.com/tokio-rs/tracing                           |
@@ -384,6 +404,7 @@ Notes on the licenses that aren't MIT or Apache-2.0:
 | `typenum`                      | 1.20.1           | Apache-2.0 OR MIT                   | https://github.com/paholg/typenum                             |
 | `unicode-ident`                | 1.0.27           | (Apache-2.0 OR MIT) AND Unicode-3.0 | https://github.com/dtolnay/unicode-ident                      |
 | `unicode-segmentation`         | 1.13.3           | Apache-2.0 OR MIT                   | https://github.com/unicode-rs/unicode-segmentation            |
+| `untrusted`                    | 0.9.0            | ISC                                 | https://github.com/briansmith/untrusted                       |
 | `url`                          | 2.5.8            | Apache-2.0 OR MIT                   | https://github.com/servo/rust-url                             |
 | `urlpattern`                   | 0.6.0            | MIT                                 | https://github.com/denoland/rust-urlpattern                   |
 | `utf8_iter`                    | 1.0.4            | Apache-2.0 OR MIT                   | https://github.com/hsivonen/utf8_iter                         |
@@ -405,6 +426,7 @@ Notes on the licenses that aren't MIT or Apache-2.0:
 | `windows-interface`            | 0.59.3           | Apache-2.0 OR MIT                   | https://github.com/microsoft/windows-rs                       |
 | `windows-link`                 | 0.2.1            | Apache-2.0 OR MIT                   | https://github.com/microsoft/windows-rs                       |
 | `windows-numerics`             | 0.3.1            | Apache-2.0 OR MIT                   | https://github.com/microsoft/windows-rs                       |
+| `windows-registry`             | 0.6.1            | Apache-2.0 OR MIT                   | https://github.com/microsoft/windows-rs                       |
 | `windows-result`               | 0.4.1            | Apache-2.0 OR MIT                   | https://github.com/microsoft/windows-rs                       |
 | `windows-strings`              | 0.5.1            | Apache-2.0 OR MIT                   | https://github.com/microsoft/windows-rs                       |
 | `windows-sys`                  | 0.60.2           | Apache-2.0 OR MIT                   | https://github.com/microsoft/windows-rs                       |
@@ -420,9 +442,11 @@ Notes on the licenses that aren't MIT or Apache-2.0:
 | `yoke-derive`                  | 0.8.4            | Unicode-3.0                         | https://github.com/unicode-org/icu4x                          |
 | `zerofrom`                     | 0.1.8            | Unicode-3.0                         | https://github.com/unicode-org/icu4x                          |
 | `zerofrom-derive`              | 0.1.8            | Unicode-3.0                         | https://github.com/unicode-org/icu4x                          |
+| `zeroize`                      | 1.9.1            | Apache-2.0 OR MIT                   | https://github.com/RustCrypto/utils                           |
 | `zerotrie`                     | 0.2.5            | Unicode-3.0                         | https://github.com/unicode-org/icu4x                          |
 | `zerovec`                      | 0.11.9           | Unicode-3.0                         | https://github.com/unicode-org/icu4x                          |
 | `zerovec-derive`               | 0.11.7           | Unicode-3.0                         | https://github.com/unicode-org/icu4x                          |
+| `zip`                          | 4.6.1            | MIT                                 | https://github.com/zip-rs/zip2.git                            |
 | `zlib-rs`                      | 0.6.8            | Zlib                                | https://github.com/trifectatechfoundation/zlib-rs             |
 | `zmij`                         | 1.0.23           | MIT                                 | https://github.com/dtolnay/zmij                               |
 

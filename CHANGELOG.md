@@ -4,6 +4,19 @@ All notable changes to Glint are listed here. The format is based on [Keep a Cha
 
 ## [Unreleased]
 
+## [0.1.6] - 2026-10-25
+
+### Added
+
+- **Automatic updates.** A few seconds after Glint starts, it checks GitHub for a newer version. If there is one, a card in the top-right corner says **Glint X.Y.Z is available** with **Update** and **Later**. **Update** shows the download progress, installs the new version, and restarts Glint, and your place in the video is saved first. Updates are signed, and Glint refuses any download whose signature doesn't match its release key.
+  - The check is quiet: offline, or if GitHub can't be reached, nothing is shown, and it never pauses or slows playback. An offer that arrives while a video is fullscreen waits until you leave fullscreen.
+  - **Help → Check for updates…** checks right away and says **You're up to date** when you are, including before any release has published an update. If the check fails, it asks you to check your internet connection only when Glint couldn't reach the server; other failures say to try again later. The Help menu also shows the installed version.
+  - Coming from 0.1.5 or older, install 0.1.6 by hand once. Later versions arrive on their own.
+
+### Changed
+
+- Release builds sign the installer for the updater. The release workflow uploads the signature and a `latest.json` manifest with the installer, and needs the signing key in the repository's secrets. Pull request builds skip the signature, so they don't need the key.
+
 ## [0.1.5] - 2026-10-25
 
 ### Changed
@@ -86,7 +99,8 @@ All notable changes to Glint are listed here. The format is based on [Keep a Cha
 - Saved position, volume, mute, and speed for each file.
 - NSIS installer with file associations and WebView2 bootstrapper.
 
-[Unreleased]: https://github.com/Adham-ELtawil/glint/compare/v0.1.5...HEAD
+[Unreleased]: https://github.com/Adham-ELtawil/glint/compare/v0.1.6...HEAD
+[0.1.6]: https://github.com/Adham-ELtawil/glint/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/Adham-ELtawil/glint/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/Adham-ELtawil/glint/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/Adham-ELtawil/glint/compare/v0.1.2...v0.1.3

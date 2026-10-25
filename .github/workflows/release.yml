@@ -1,8 +1,13 @@
 name: Release
 
-# Push a tag like v0.1.5 to build the Windows installer and open a draft
-# GitHub release with the installer, its SHA-256, and the CHANGELOG notes.
-# Review the draft, then publish it by hand.
+# Push a tag like v0.1.6 to build the Windows installer and open a draft
+# GitHub release with the installer, its SHA-256, the updater signature and
+# `latest.json`, and the CHANGELOG notes. Review the draft, then publish it by
+# hand. Installed copies of Glint only see the update once it is published,
+# because they read releases/latest/download/latest.json.
+#
+# Needs two repository secrets, the updater signing key and its password:
+# TAURI_SIGNING_PRIVATE_KEY and TAURI_SIGNING_PRIVATE_KEY_PASSWORD.
 
 on:
   push:
@@ -55,7 +60,19 @@ jobs:
         working-directory: src-tauri
         run: cargo test
 
-      - name: Build the NSIS installer
+      - name: Check the updater signing key is set
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          if (-not $env:TAURI_SIGNING_PRIVATE_KEY) {
+            Write-Error "The TAURI_SIGNING_PRIVATE_KEY secret is missing, so the update can't be signed."
+            exit 1
+          }
+
+      - name: Build and sign the NSIS installer
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npm run tauri build -- --bundles nsis
 
       - name: Compute the SHA-256
@@ -63,8 +80,10 @@ jobs:
           $exe = "Glint_${env:VERSION}_x64-setup.exe"
           $src = "src-tauri/target/release/bundle/nsis/$exe"
           if (-not (Test-Path $src)) { Write-Error "Missing $src"; exit 1 }
+          if (-not (Test-Path "$src.sig")) { Write-Error "Missing $src.sig"; exit 1 }
           New-Item -ItemType Directory -Force out | Out-Null
           Copy-Item $src "out/$exe"
+          Copy-Item "$src.sig" "out/$exe.sig"
           $hash = (Get-FileHash "out/$exe" -Algorithm SHA256).Hash.ToLower()
           # Same format as sha256sum, so `sha256sum -c` works on it.
           [IO.File]::WriteAllText("out/$exe.sha256", "$hash  $exe`n")
@@ -84,17 +103,35 @@ jobs:
             if ($lines[$i] -match "^## \[" -or $lines[$i] -match "^\[[^\]]+\]: ") { $end = $i; break }
           }
           $notes = ($lines[$start..($end - 1)] -join "`n").Trim()
+          [IO.File]::WriteAllText("out/changes.md", $notes)
           $notes += "`n`n---`n`n**SHA-256** of ``$env:EXE``:`n`n``````text`n$env:SHA256`n```````n"
           $notes += "`nThe installer is not code-signed yet. If Windows SmartScreen says ""Windows protected your PC"", click **More info**, then **Run anyway**.`n"
           [IO.File]::WriteAllText("out/notes.md", $notes)
           Get-Content out/notes.md
+
+      - name: Write latest.json for the in-app updater
+        run: |
+          $notes = [IO.File]::ReadAllText("out/changes.md")
+          $signature = ([IO.File]::ReadAllText("out/$env:EXE.sig")).Trim()
+          $url = "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$env:EXE"
+          $manifest = [ordered]@{
+            version  = $env:VERSION
+            notes    = $notes
+            pub_date = (Get-Date).ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", [Globalization.CultureInfo]::InvariantCulture)
+            platforms = [ordered]@{
+              "windows-x86_64" = [ordered]@{ signature = $signature; url = $url }
+            }
+          }
+          $json = $manifest | ConvertTo-Json -Depth 5
+          [IO.File]::WriteAllText("out/latest.json", $json, [Text.UTF8Encoding]::new($false))
+          Get-Content out/latest.json
 
       - name: Create the draft release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create "${{ github.ref_name }}" `
-            "out/$env:EXE" "out/$env:EXE.sha256" `
+            "out/$env:EXE" "out/$env:EXE.sha256" "out/$env:EXE.sig" out/latest.json `
             --draft `
             --title "Glint $env:VERSION" `
             --notes-file out/notes.md `

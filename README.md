@@ -48,13 +48,14 @@ Open a video and the same control bar, shortcuts, and animations you already kno
 - **Folder playlist.** The other videos in the same folder become a playlist. **Next** (Shift+N) plays the next one.
 - **One window.** Opening another file from Explorer sends it to the Glint window that is already open.
 - **Private.** History, thumbnails, and settings stay on your PC. **View → Clear watch history** removes them.
+- **Automatic updates.** From 0.1.6 on, Glint checks for a new version when it starts and offers to install it in one click. **Help → Check for updates…** checks right away.
 - **Animations always on.** The play/pause animations still run when Windows **Animation effects** is turned off.
 
 ![Glint playing a video, with chapters, captions, and the control bar](docs/screenshot.png)
 
 ## Download and install
 
-1. Go to the [latest release](https://github.com/Adham-ELtawil/glint/releases/latest) and download `Glint_<version>_x64-setup.exe` (about 2.5 MB). Glint runs on 64-bit Windows 10 and 11.
+1. Go to the [latest release](https://github.com/Adham-ELtawil/glint/releases/latest) and download `Glint_<version>_x64-setup.exe` (about 3.3 MB). Glint runs on 64-bit Windows 10 and 11.
 2. Run it. Glint installs for your user account only, so it doesn't ask for administrator rights.
 3. Open Glint from the Start menu, or right-click a video and choose **Open with → Glint**.
 
@@ -65,7 +66,7 @@ Open a video and the same control bar, shortcuts, and animations you already kno
 
 **WebView2.** Glint draws its window with Microsoft Edge WebView2. It is already installed on Windows 11 and on most Windows 10 PCs. If it is missing, the installer downloads and installs it for you, which needs an internet connection.
 
-**Updating.** Close Glint, then run the new installer. Your saved positions and settings are kept.
+**Updating.** From 0.1.6 on, Glint tells you when a new version is out: click **Update** and it downloads, installs, and restarts on its own. Updates are signed, and Glint refuses any download that wasn't signed with Glint's release key. To update from 0.1.5 or older, close Glint and run the new installer once. Your saved positions and settings are kept either way.
 
 **Uninstalling.** Open **Settings → Apps → Installed apps**, find **Glint**, and choose **Uninstall**.
 
@@ -261,6 +262,8 @@ cargo install --locked cargo-xwin
 npm run tauri build -- --runner cargo-xwin --target x86_64-pc-windows-msvc --bundles nsis
 ```
 
+**Updater signature.** Builds also sign the installer for the in-app updater (`Glint_<version>_x64-setup.exe.sig`), so they need the signing key in `TAURI_SIGNING_PRIVATE_KEY` (the key itself or a path to it) and its password in `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`. Without the key, add `--config '{"bundle":{"createUpdaterArtifacts":false}}'` to skip the `.sig`, as CI does for pull requests.
+
 The installer is written to `src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/Glint_<version>_x64-setup.exe`. See Tauri's [Windows cross-compilation guide](https://v2.tauri.app/distribute/windows-installer/#build-windows-apps-on-linux-and-macos) for details.
 
 **Linux binary** (for testing, no installer): `npm run tauri build -- --no-bundle` writes `src-tauri/target/release/glint`.
@@ -334,6 +337,7 @@ File menu, drag-and-drop, Explorer / CLI
 - **Single instance.** `tauri-plugin-single-instance` forwards files from a second launch to the open window.
 - **Saved state.** `localStorage` key `glint.player.v1`, keyed by the file's full path. Data from the old `lumen.player.v1` key is migrated on startup. Watch history is `glint.history.v1`.
 - **Home screen.** Rust keeps the folder list in `library.json` in the app config folder and scans folders on a background thread (one level deep, at most 400 videos per folder, hidden and system files skipped). Thumbnails are grabbed in the webview by drawing a hidden `<video>` to a canvas, then saved by Rust as JPEGs in the app cache folder, keyed by the file's path, size, and modified time, so an edited file gets a new thumbnail.
+- **Updates.** `tauri-plugin-updater`, driven from Rust (`updates.rs`). A few seconds after startup the app reads `latest.json` from the latest GitHub release. If it lists a newer version, a card offers it; **Update** downloads the installer, checks its signature against the public key in `tauri.conf.json`, and runs it in passive mode, which restarts Glint. Failed or offline checks show nothing. To test against another server, set `GLINT_UPDATE_ENDPOINT` to an `https` URL of a `latest.json`. The signature check still applies.
 - **Autoplay.** WebView2 starts with `--autoplay-policy=no-user-gesture-required`, so a file opened from Explorer plays right away.
 
 ### Changing the app icon
@@ -357,8 +361,8 @@ The icon artwork lives in `src-tauri/icons/source/`: `glint.svg` is the master, 
 3. Make sure everything passes: `npm run lint`, `npm run format:check`, `npm test`, `npm run test:rust`.
 4. Build the installer (see [Build the Windows installer](#build-the-windows-installer)) and try it on a real Windows PC.
 5. Commit, tag (`git tag v<version>`), and push the tag.
-6. The [Release workflow](.github/workflows/release.yml) builds the NSIS installer on Windows, checks that the tag matches the app version, and opens a **draft** GitHub release with `Glint_<version>_x64-setup.exe`, a `.sha256` file, and the matching `CHANGELOG.md` section as the notes.
-7. Check the draft on the [Releases](https://github.com/Adham-ELtawil/glint/releases) page, then publish it.
+6. The [Release workflow](.github/workflows/release.yml) builds the NSIS installer on Windows, checks that the tag matches the app version, signs it for the updater, and opens a **draft** GitHub release with `Glint_<version>_x64-setup.exe`, a `.sha256` file, the updater's `.sig` and `latest.json`, and the matching `CHANGELOG.md` section as the notes. It needs the `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` repository secrets.
+7. Check the draft on the [Releases](https://github.com/Adham-ELtawil/glint/releases) page, then publish it. Installed copies of Glint see the update as soon as it is published as the latest release.
 
 ## Contributing
 

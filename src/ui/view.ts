@@ -3,6 +3,7 @@ import { PLAYBACK_RATES, formatRate } from "../player/rates";
 import { isTypingTarget, mapShortcut, type ShortcutAction } from "../player/shortcuts";
 import type { FlashEffect, PlayerState } from "../player/state";
 import { formatPair, formatTime } from "../player/time";
+import { APP_VERSION } from "../version";
 import { brandMark, brandMarkLarge, icon, playPauseIcon, type IconName } from "./icons";
 
 export interface ViewActions {
@@ -26,6 +27,7 @@ export interface ViewActions {
   goHome(): void;
   addFolder(): void;
   clearHistory(): void;
+  checkForUpdates(): void;
 }
 
 /**
@@ -42,7 +44,7 @@ const CHAPTER_GAP_PX = 4;
 const VOLUME_THUMB_PX = 12;
 
 type SettingsPage = "main" | "speed" | "subtitles";
-type MenuName = "file" | "playback" | "view";
+type MenuName = "file" | "playback" | "view" | "help";
 
 export class PlayerView {
   readonly root: HTMLElement;
@@ -108,6 +110,7 @@ export class PlayerView {
     file: null!,
     playback: null!,
     view: null!,
+    help: null!,
   };
 
   constructor(
@@ -388,11 +391,13 @@ export class PlayerView {
     this.menuButtons.file = menuButton("File");
     this.menuButtons.playback = menuButton("Playback");
     this.menuButtons.view = menuButton("View");
+    this.menuButtons.help = menuButton("Help");
     nav.append(
       this.homeBtn,
       this.menuButtons.file,
       this.menuButtons.playback,
       this.menuButtons.view,
+      this.menuButtons.help,
     );
     // Like the YouTube logo, the brand goes home.
     const brand = el("button", "brand");
@@ -617,7 +622,7 @@ export class PlayerView {
       if (!this.scrubbing) this.tooltip.hidden = true;
     });
 
-    for (const name of ["file", "playback", "view"] as const) {
+    for (const name of ["file", "playback", "view", "help"] as const) {
       this.menuButtons[name].addEventListener("click", (event) => {
         event.stopPropagation();
         this.toggleMenu(name);
@@ -949,6 +954,20 @@ export class PlayerView {
           "",
           run(() => this.actions.clearHistory()),
         ),
+      );
+    } else if (this.menuName === "help") {
+      const note = document.createElement("div");
+      note.className = "menu-note";
+      note.textContent = `Glint ${APP_VERSION}`;
+      this.menu.append(
+        menuItem(
+          "Check for updates…",
+          "",
+          run(() => this.actions.checkForUpdates()),
+          !this.nativeDrag,
+        ),
+        separator(),
+        note,
       );
     }
   }
