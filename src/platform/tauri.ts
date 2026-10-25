@@ -1,10 +1,11 @@
-import { invoke } from "@tauri-apps/api/core";
+import { Channel, invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open } from "@tauri-apps/plugin-dialog";
 import type { FolderScan, LibraryApi, LibraryFolder, MediaInfo } from "../home/library";
 import type { OpenedMedia, PlaylistItem, SubtitleFile } from "../model/media";
+import type { DownloadEvent, UpdateInfo, UpdaterApi } from "../update/model";
 import { VIDEO_EXTENSIONS } from "../player/playlist";
 
 interface OpenedDto {
@@ -150,6 +151,16 @@ export const desktopLibrary: LibraryApi = {
   mediaInfo: (paths) => invoke<MediaInfo[]>("media_info", { paths }),
   saveThumbnail: (path, data, duration) => invoke<void>("save_thumbnail", { path, data, duration }),
   mediaUrl: (path) => invoke<string>("media_url", { path }),
+};
+
+/** Glint's updater in Rust (tauri-plugin-updater, signed GitHub releases). */
+export const desktopUpdater: UpdaterApi = {
+  check: () => invoke<UpdateInfo | null>("check_update"),
+  async install(onEvent) {
+    const channel = new Channel<DownloadEvent>();
+    channel.onmessage = onEvent;
+    await invoke<void>("install_update", { onEvent: channel });
+  },
 };
 
 function fromDto(dto: OpenedDto): OpenedMedia {

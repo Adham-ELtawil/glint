@@ -4,6 +4,8 @@ pub mod library;
 pub mod media_server;
 mod paths;
 mod range;
+#[cfg(desktop)]
+mod updates;
 
 use std::sync::Mutex;
 
@@ -55,6 +57,9 @@ pub fn run() {
                 let _ = window.set_focus();
             }
         }));
+        builder = builder
+            .plugin(tauri_plugin_updater::Builder::new().build())
+            .manage(updates::PendingUpdate::default());
     }
 
     builder
@@ -70,7 +75,11 @@ pub fn run() {
             commands::scan_library,
             commands::media_info,
             commands::save_thumbnail,
-            commands::media_url
+            commands::media_url,
+            #[cfg(desktop)]
+            updates::check_update,
+            #[cfg(desktop)]
+            updates::install_update
         ])
         .setup(|app| {
             let home = open_home(app.handle());
