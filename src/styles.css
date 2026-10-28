@@ -2080,3 +2080,31 @@ video::cue {
   color: var(--dim);
   font-size: 12px;
 }
+
+/* Press-and-hold Space: YouTube's "2x" pill at the top center. */
+.boost-pill {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 18px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  pointer-events: none;
+}
+
+.boost-pill[hidden] {
+  display: none;
+}
+
+.boost-arrows {
+  font-size: 10px;
+  letter-spacing: -2px;
+}

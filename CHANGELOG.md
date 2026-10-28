@@ -4,6 +4,12 @@ All notable changes to Glint are listed here. The format is based on [Keep a Cha
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-10-29
+
+### Added
+
+- **Hold Space for 2x.** Like YouTube, a quick tap on Space still plays and pauses, and holding it down plays the video at 2x until you let go, with a **2x** pill at the top of the video. Letting go returns to the speed you had before (your own speed setting is kept) and, if the video was paused, pauses it again. The temporary 2x is never saved as the video's speed. K still plays and pauses right away.
+
 ## [0.1.6] - 2026-10-25
 
 ### Added
@@ -99,7 +105,8 @@ All notable changes to Glint are listed here. The format is based on [Keep a Cha
 - Saved position, volume, mute, and speed for each file.
 - NSIS installer with file associations and WebView2 bootstrapper.
 
-[Unreleased]: https://github.com/Adham-ELtawil/glint/compare/v0.1.6...HEAD
+[Unreleased]: https://github.com/Adham-ELtawil/glint/compare/v0.1.7...HEAD
+[0.1.7]: https://github.com/Adham-ELtawil/glint/compare/v0.1.6...v0.1.7
 [0.1.6]: https://github.com/Adham-ELtawil/glint/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/Adham-ELtawil/glint/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/Adham-ELtawil/glint/compare/v0.1.3...v0.1.4

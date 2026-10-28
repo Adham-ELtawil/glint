@@ -232,3 +232,57 @@ describe("PlayerController", () => {
     expect(sink.state?.errorBody).toContain("film.mkv");
   });
 });
+
+describe("held-Space 2x boost", () => {
+  async function ready(rate = 1.25) {
+    const backend = new FakeBackend();
+    const store = createResumeStore(memoryStorage());
+    const sink = new RecordingSink();
+    const player = new PlayerController(backend, store, sink);
+    await player.open(media("/videos/boost.mp4"));
+    player.setRate(rate);
+    return { backend, store, sink, player };
+  }
+
+  it("plays at 2x while held and restores the custom speed after", async () => {
+    const { backend, sink, player } = await ready(1.25);
+    expect(backend.getSnapshot().status).toBe("playing");
+    player.startBoost();
+    expect(backend.getSnapshot().rate).toBe(2);
+    expect(sink.state?.boosting).toBe(true);
+    player.endBoost();
+    expect(backend.getSnapshot().rate).toBe(1.25);
+    expect(backend.getSnapshot().status).toBe("playing");
+    expect(sink.state?.boosting).toBe(false);
+  });
+
+  it("from paused: plays during the hold and pauses again on release", async () => {
+    const { backend, player } = await ready(1);
+    player.togglePlay();
+    expect(backend.getSnapshot().status).toBe("paused");
+    player.startBoost();
+    expect(backend.getSnapshot().status).toBe("playing");
+    expect(backend.getSnapshot().rate).toBe(2);
+    player.endBoost();
+    expect(backend.getSnapshot().status).toBe("paused");
+    expect(backend.getSnapshot().rate).toBe(1);
+  });
+
+  it("never saves 2x as the file's speed", async () => {
+    const { store, player } = await ready(1.5);
+    player.startBoost();
+    player.setVolume(0.4);
+    expect(store.file("/videos/boost.mp4")?.rate).toBe(1.5);
+    player.endBoost();
+  });
+
+  it("opening another file mid-hold drops the boost", async () => {
+    const { backend, player } = await ready(1);
+    player.startBoost();
+    await player.open(media("/videos/other.mp4"));
+    expect(player.isBoosting()).toBe(false);
+    expect(backend.getSnapshot().rate).not.toBe(2);
+    player.endBoost();
+    expect(backend.getSnapshot().rate).not.toBe(2);
+  });
+});

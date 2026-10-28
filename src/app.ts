@@ -60,6 +60,8 @@ export async function start(root: HTMLElement): Promise<void> {
     replay: () => player.togglePlay(),
     startOver: () => player.startOver(),
     shortcut: (action) => onShortcut(action),
+    startBoost: () => player.startBoost(),
+    endBoost: () => player.endBoost(),
     filesDropped: (files) => void onFiles(files),
     goHome: () => showHome(),
     addFolder: () => void addFolder(),

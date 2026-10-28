@@ -26,6 +26,8 @@ export interface PlayerState {
   fullscreen: boolean;
   theater: boolean;
   resumeLabel: string | null;
+  /** True while Space is held for temporary 2x playback. */
+  boosting: boolean;
 }
 
 export type FlashEffect =
@@ -60,5 +62,6 @@ export function initialState(): PlayerState {
     fullscreen: false,
     theater: false,
     resumeLabel: null,
+    boosting: false,
   };
 }

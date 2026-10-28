@@ -25,6 +25,8 @@ interface PreparedTrack extends SubtitleCueTrack {
 
 const SEEK_BURST_MS = 850;
 const SAVE_INTERVAL_MS = 2000;
+/** Playback speed while Space is held, like YouTube's press-and-hold. */
+export const BOOST_RATE = 2;
 
 /**
  * Owns playback policy: resume, per-file volume and speed, captions, chapters,
@@ -46,6 +48,8 @@ export class PlayerController {
   private generation = 0;
   private lastSave = 0;
   private seekBurst = { direction: 0 as -1 | 0 | 1, amount: 0, at: 0 };
+  /** Rate and paused state to restore when a held-Space boost ends. */
+  private boost: { rate: number; paused: boolean } | null = null;
   private unsubscribe: () => void;
 
   constructor(
@@ -79,6 +83,7 @@ export class PlayerController {
 
   async open(media: OpenedMedia): Promise<void> {
     this.persistPosition();
+    this.boost = null;
     const generation = ++this.generation;
     this.media = media;
     this.resumeLabel = null;
@@ -288,7 +293,37 @@ export class PlayerController {
     this.publish();
   }
 
+  /** Space held down: play at 2x until {@link endBoost}. */
+  startBoost(): void {
+    if (this.boost || !this.canControl()) return;
+    const snapshot = this.backend.getSnapshot();
+    if (snapshot.status === "ended") return;
+    this.boost = { rate: snapshot.rate, paused: snapshot.status !== "playing" };
+    this.backend.setRate(BOOST_RATE);
+    if (this.boost.paused) void this.backend.play();
+    this.resumeLabel = null;
+    this.publish();
+  }
+
+  /** Space released: restore the speed and paused state from before the hold. */
+  endBoost(): void {
+    const boost = this.boost;
+    if (!boost) return;
+    this.boost = null;
+    this.backend.setRate(boost.rate);
+    if (boost.paused && this.backend.getSnapshot().status === "playing") {
+      this.backend.pause();
+      this.persistPosition(true);
+    }
+    this.publish();
+  }
+
+  isBoosting(): boolean {
+    return this.boost != null;
+  }
+
   setRate(rate: number): void {
+    this.boost = null;
     const next = clampRate(rate);
     this.backend.setRate(next);
     this.persistAudio();
@@ -296,6 +331,10 @@ export class PlayerController {
   }
 
   cycleRate(direction: -1 | 1): void {
+    if (this.boost) {
+      this.backend.setRate(this.boost.rate);
+      this.boost = null;
+    }
     const next = stepRate(this.backend.getSnapshot().rate, direction);
     this.backend.setRate(next);
     this.persistAudio();
@@ -457,7 +496,9 @@ export class PlayerController {
 
   private persistAudio(): void {
     const snapshot = this.backend.getSnapshot();
-    const patch = { volume: snapshot.volume, muted: snapshot.muted, rate: snapshot.rate };
+    // A held-Space boost is temporary, so the saved speed is the one underneath it.
+    const rate = this.boost?.rate ?? snapshot.rate;
+    const patch = { volume: snapshot.volume, muted: snapshot.muted, rate };
     if (this.media) this.store.updateFile(this.media.source.id, patch);
     else this.store.setDefaults(patch);
   }
@@ -523,6 +564,7 @@ export class PlayerController {
       fullscreen: this.fullscreen,
       theater: this.theater,
       resumeLabel: this.resumeLabel,
+      boosting: this.boost != null,
     };
   }
 }

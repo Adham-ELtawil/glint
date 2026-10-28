@@ -639,7 +639,8 @@ export class HomeView {
       wrap.append(note);
     }
     const hints = el("p", "hints");
-    hints.textContent = "Space play  ·  J / L seek  ·  ← → 5 seconds  ·  F fullscreen  ·  M mute";
+    hints.textContent =
+      "Space play  ·  Hold Space 2x  ·  J / L seek  ·  ← → 5 seconds  ·  F fullscreen  ·  M mute";
     wrap.append(hints);
     return wrap;
   }

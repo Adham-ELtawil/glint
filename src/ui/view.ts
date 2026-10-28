@@ -23,6 +23,10 @@ export interface ViewActions {
   replay(): void;
   startOver(): void;
   shortcut(action: ShortcutAction): void;
+  /** Space held past {@link SPACE_HOLD_MS}: play at 2x. */
+  startBoost(): void;
+  /** Space released after a hold: back to normal speed. */
+  endBoost(): void;
   filesDropped(files: File[]): void;
   goHome(): void;
   addFolder(): void;
@@ -36,6 +40,12 @@ export interface ViewActions {
  * never runs or never reports that it ended.
  */
 export const FEEDBACK_HIDE_MS = 600;
+
+/**
+ * Space pressed for less than this is a tap (play/pause); held longer it plays
+ * at 2x until released, like YouTube's press-and-hold.
+ */
+export const SPACE_HOLD_MS = 300;
 
 /** Transparent gap between chapter segments on the progress bar (YouTube uses 4px). */
 const CHAPTER_GAP_PX = 4;
@@ -57,6 +67,10 @@ export class PlayerView {
   private resumeTimer = 0;
   private hideTimer = 0;
   private feedbackTimer = 0;
+  private spaceDown = false;
+  private spaceTimer = 0;
+  private spaceBoosting = false;
+  private boostPill!: HTMLElement;
   private pointerX = Number.NaN;
   private pointerY = Number.NaN;
   private suppressPointerUntil = 0;
@@ -239,6 +253,7 @@ export class PlayerView {
       }, 6000);
     }
     if (!showResume) this.resume.hidden = true;
+    this.boostPill.hidden = !(state.boosting && state.phase === "ready");
 
     if (this.settingsOpen && settingsChanged(previous, state)) this.paintSettings();
     if (this.menuName && menuChanged(previous, state)) this.paintMenu();
@@ -432,6 +447,16 @@ export class PlayerView {
     this.feedback = el("div", "feedback");
     this.feedback.hidden = true;
 
+    this.boostPill = el("div", "boost-pill");
+    this.boostPill.hidden = true;
+    this.boostPill.setAttribute("role", "status");
+    const boostRate = el("span", "boost-rate");
+    boostRate.textContent = "2x";
+    const boostArrows = el("span", "boost-arrows");
+    boostArrows.setAttribute("aria-hidden", "true");
+    boostArrows.textContent = "\u25B6\u25B6";
+    this.boostPill.append(boostRate, boostArrows);
+
     this.bigPlay = button("big-play", "Play", "play");
     this.bigPlay.addEventListener("click", (event) => {
       event.stopPropagation();
@@ -461,7 +486,8 @@ export class PlayerView {
     openBtn.textContent = "Open file";
     openBtn.addEventListener("click", () => this.actions.openVideo());
     const hints = el("p", "hints");
-    hints.textContent = "Space play  ·  J / L seek  ·  ← → 5 seconds  ·  F fullscreen  ·  M mute";
+    hints.textContent =
+      "Space play  ·  Hold Space 2x  ·  J / L seek  ·  ← → 5 seconds  ·  F fullscreen  ·  M mute";
     this.empty.append(emptyMark, emptyTitle, emptyCopy, openBtn, hints);
 
     this.error = el("div", "error");
@@ -577,6 +603,7 @@ export class PlayerView {
       gesture,
       this.gradient,
       this.feedback,
+      this.boostPill,
       this.bigPlay,
       this.ended,
       this.empty,
@@ -655,6 +682,9 @@ export class PlayerView {
     });
 
     window.addEventListener("keydown", (event) => this.onKey(event), true);
+    window.addEventListener("keyup", (event) => this.onKeyUp(event), true);
+    // A release that happens while the window is unfocused never arrives.
+    window.addEventListener("blur", () => this.cancelSpace());
     // The mouse's back button goes home, like a browser's back.
     window.addEventListener("mouseup", (event) => {
       if (event.button !== 3 || this.homeActive) return;
@@ -761,6 +791,11 @@ export class PlayerView {
       return;
     }
     if (this.isOverlayOpen() && event.key !== "Escape") return;
+    if (isPlainSpace(event)) {
+      event.preventDefault();
+      this.onSpaceDown(event.repeat);
+      return;
+    }
     const action = mapShortcut({
       key: event.key,
       code: event.code,
@@ -785,6 +820,50 @@ export class PlayerView {
       return;
     }
     this.actions.shortcut(action);
+  }
+
+  /**
+   * A tap toggles play/pause on release; a hold past SPACE_HOLD_MS plays at 2x
+   * until release. Auto-repeat keydowns while held are ignored.
+   */
+  private onSpaceDown(repeat: boolean): void {
+    if (repeat || this.spaceDown) return;
+    this.spaceDown = true;
+    window.clearTimeout(this.spaceTimer);
+    this.spaceTimer = window.setTimeout(() => {
+      this.spaceTimer = 0;
+      if (!this.spaceDown) return;
+      this.spaceBoosting = true;
+      this.actions.startBoost();
+    }, SPACE_HOLD_MS);
+  }
+
+  private onKeyUp(event: KeyboardEvent): void {
+    if (event.key !== " " || !this.spaceDown) return;
+    // Also stops a focused button from turning the release into a click.
+    event.preventDefault();
+    this.spaceDown = false;
+    if (this.spaceTimer) {
+      window.clearTimeout(this.spaceTimer);
+      this.spaceTimer = 0;
+      this.actions.shortcut({ type: "toggle-play" });
+      return;
+    }
+    if (this.spaceBoosting) {
+      this.spaceBoosting = false;
+      this.actions.endBoost();
+    }
+  }
+
+  /** Focus lost mid-press: drop a pending tap and end any boost. */
+  private cancelSpace(): void {
+    window.clearTimeout(this.spaceTimer);
+    this.spaceTimer = 0;
+    this.spaceDown = false;
+    if (this.spaceBoosting) {
+      this.spaceBoosting = false;
+      this.actions.endBoost();
+    }
   }
 
   private onScrubStart(event: PointerEvent): void {
@@ -1290,4 +1369,8 @@ function settingsCheck(label: string, selected: boolean, onClick: () => void): H
 
 function targetBelongs(target: Node, selector: string): boolean {
   return target instanceof Element && Boolean(target.closest(selector));
+}
+
+function isPlainSpace(event: KeyboardEvent): boolean {
+  return event.key === " " && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey;
 }
