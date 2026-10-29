@@ -1,6 +1,6 @@
 [package]
 name = "glint"
-version = "0.1.7"
+version = "0.2.0"
 description = "A fast desktop video player with a YouTube-style interface"
 authors = ["Adham Yasser"]
 license = "MIT"
@@ -21,7 +21,7 @@ serde_json = "1"
 axum = "0.8"
 bytes = "1"
 http-body = "1"
-tokio = { version = "1", features = ["rt", "macros", "net", "fs", "io-util", "sync", "time"] }
+tokio = { version = "1", features = ["rt", "macros", "net", "fs", "io-util", "sync", "time", "process"] }
 uuid = { version = "1", features = ["v4"] }
 base64 = "0.21"
 
@@ -32,6 +32,16 @@ tauri-plugin-updater = "2"
 # published yet" (404) apart from other failed checks.
 reqwest = { version = "0.13", default-features = false }
 rustls = { version = "0.23", default-features = false, features = ["ring"] }
+
+# Job object so the bundled ffmpeg never outlives Glint. Already in the build
+# through Tauri.
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = [
+  "Win32_Foundation",
+  "Win32_Security",
+  "Win32_System_JobObjects",
+  "Win32_System_Threading",
+] }
 
 [profile.release]
 codegen-units = 1

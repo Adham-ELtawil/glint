@@ -1,8 +1,10 @@
-mod commands;
+pub mod commands;
+pub mod ffmpeg;
 pub mod home;
 pub mod library;
 pub mod media_server;
 mod paths;
+pub mod playback;
 mod range;
 #[cfg(desktop)]
 mod updates;
@@ -36,9 +38,12 @@ pub fn run() {
         std::env::args().skip(1),
         &std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from(".")),
     );
-    let media = media_server::MediaServer::start().expect("start media server");
+    let tools = ffmpeg::Tools::locate();
+    let media =
+        media_server::MediaServer::start_with(tools.ffmpeg.clone()).expect("start media server");
     let state = AppState {
         media,
+        tools,
         launch_files: Mutex::new(launch_files),
     };
 
@@ -76,6 +81,7 @@ pub fn run() {
             commands::media_info,
             commands::save_thumbnail,
             commands::media_url,
+            commands::ffmpeg_frame,
             #[cfg(desktop)]
             updates::check_update,
             #[cfg(desktop)]

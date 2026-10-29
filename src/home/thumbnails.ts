@@ -115,8 +115,7 @@ export class ThumbnailService {
 
   private async generate(path: string): Promise<Thumb> {
     try {
-      const url = await this.api.mediaUrl(path);
-      const frame = await this.grab(url);
+      const frame = await this.grabAny(path);
       const duration =
         Number.isFinite(frame.duration) && frame.duration > 0 ? frame.duration : null;
       void this.api.saveThumbnail(path, frame.dataUrl, duration).catch(() => {});
@@ -129,6 +128,22 @@ export class ThumbnailService {
         queueMicrotask(() => this.results.delete(path));
       }
       return { kind: "fallback", duration: null, missing: false };
+    }
+  }
+
+  /** The webview first (fast, no extra process), then Glint's ffmpeg for other formats. */
+  private async grabAny(path: string): Promise<GrabbedFrame> {
+    try {
+      const url = await this.api.mediaUrl(path);
+      return await this.grab(url);
+    } catch (error) {
+      const ffmpegFrame = this.api.ffmpegFrame;
+      if (!(error instanceof GrabError) || !error.permanent || !ffmpegFrame) throw error;
+      try {
+        return await ffmpegFrame.call(this.api, path);
+      } catch {
+        throw new GrabError("Neither the webview nor ffmpeg could read this file.", true);
+      }
     }
   }
 

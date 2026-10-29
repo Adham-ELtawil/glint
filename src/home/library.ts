@@ -49,6 +49,13 @@ export interface LibraryApi {
   mediaInfo(paths: string[]): Promise<MediaInfo[]>;
   saveThumbnail(path: string, data: string | null, duration: number | null): Promise<void>;
   mediaUrl(path: string): Promise<string>;
+  /** A thumbnail through Glint's ffmpeg, for files the webview can't decode. */
+  ffmpegFrame?(path: string): Promise<FfmpegFrame>;
+}
+
+export interface FfmpegFrame {
+  dataUrl: string;
+  duration: number;
 }
 
 export const offlineLibrary: LibraryApi = {

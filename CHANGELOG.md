@@ -4,6 +4,26 @@ All notable changes to Glint are listed here. The format is based on [Keep a Cha
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-29
+
+### Added
+
+- **MKV, AVI, MOV, WMV, FLV, MPEG, TS and more.** Glint now comes with a small build of FFmpeg and uses it for files WebView2 can't play on its own. It converts only what's needed, on the fly, while you watch, and writes nothing to disk:
+  - MKV with H.264, HEVC, VP9 or AV1 video is repackaged without touching the video, so it costs almost no CPU.
+  - Dolby (AC-3/E-AC-3), DTS, TrueHD and PCM audio is converted to AAC. 5.1 stays 5.1.
+  - Older video (Xvid/DivX, WMV/VC-1, MPEG-2, FLV) is converted to H.264 with Windows' built-in encoder.
+  - HEVC (H.265), including iPhone videos, plays directly when Windows can decode it and is converted to H.264 when it can't.
+  - Seeking works anywhere, including far ahead of what has been converted, and a brief **Converting…** note shows at the top left while it's in use.
+- If an MP4, M4V or MOV file won't play in WebView2, or plays with no picture, Glint retries it through FFmpeg automatically.
+- Home-screen thumbnails for those formats, made with FFmpeg. Files that failed in older versions are tried again.
+- **Open with → Glint** in Explorer for MKV, MOV, AVI, WMV, ASF, FLV, F4V, TS, M2TS, MTS, MPG, MPEG, VOB, 3GP, OGV and DivX. Glint doesn't make itself the default for any of them, and the uninstaller removes the entries.
+- **Help** credits FFmpeg and its license.
+
+### Changed
+
+- The "can't be played" message no longer says support is planned; it now explains when a conversion failed.
+- FFmpeg runs hidden (no console window) and is stopped as soon as you open another file, seek elsewhere, or close Glint, even if Glint crashes.
+
 ## [0.1.7] - 2026-10-29
 
 ### Added
@@ -105,7 +125,8 @@ All notable changes to Glint are listed here. The format is based on [Keep a Cha
 - Saved position, volume, mute, and speed for each file.
 - NSIS installer with file associations and WebView2 bootstrapper.
 
-[Unreleased]: https://github.com/Adham-ELtawil/glint/compare/v0.1.7...HEAD
+[Unreleased]: https://github.com/Adham-ELtawil/glint/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Adham-ELtawil/glint/compare/v0.1.7...v0.2.0
 [0.1.7]: https://github.com/Adham-ELtawil/glint/compare/v0.1.6...v0.1.7
 [0.1.6]: https://github.com/Adham-ELtawil/glint/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/Adham-ELtawil/glint/compare/v0.1.4...v0.1.5

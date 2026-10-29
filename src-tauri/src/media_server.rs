@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll};
 
@@ -14,6 +15,9 @@ use bytes::Bytes;
 use http_body::Frame;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncSeekExt, ReadBuf};
 
+use crate::ffmpeg::args::{session_args, video_encoder};
+use crate::ffmpeg::plan::Plan;
+use crate::ffmpeg::process;
 use crate::range::parse_byte_range;
 
 /// Loopback file server so `<video>` can seek with HTTP range requests.
@@ -24,16 +28,41 @@ use crate::range::parse_byte_range;
 #[derive(Clone)]
 pub struct MediaServer {
     port: u16,
+    shared: Shared,
+}
+
+/// A file that plays through ffmpeg, and the plan it plays with.
+#[derive(Clone)]
+struct StreamEntry {
+    path: PathBuf,
+    plan: Plan,
+    /// Bumped by every new request, so a superseded session stops streaming.
+    session: Arc<AtomicU64>,
+}
+
+#[derive(Clone)]
+struct Shared {
     files: Arc<Mutex<HashMap<String, PathBuf>>>,
+    streams: Arc<Mutex<HashMap<String, StreamEntry>>>,
+    ffmpeg: Option<PathBuf>,
 }
 
 impl MediaServer {
     pub fn start() -> Result<Self, String> {
-        let files = Arc::new(Mutex::new(HashMap::new()));
-        let state = files.clone();
+        Self::start_with(None)
+    }
+
+    /// `ffmpeg` enables the `/stream` route for files the webview can't play.
+    pub fn start_with(ffmpeg: Option<PathBuf>) -> Result<Self, String> {
+        let shared = Shared {
+            files: Arc::new(Mutex::new(HashMap::new())),
+            streams: Arc::new(Mutex::new(HashMap::new())),
+            ffmpeg,
+        };
         let app = Router::new()
             .route("/media/{token}", any(serve))
-            .with_state(state);
+            .route("/stream/{token}", any(stream))
+            .with_state(shared.clone());
 
         let std_listener = std::net::TcpListener::bind("127.0.0.1:0")
             .map_err(|err| format!("Couldn't start playback server: {err}"))?;
@@ -62,7 +91,7 @@ impl MediaServer {
             })
             .map_err(|err| format!("Couldn't start playback server: {err}"))?;
 
-        Ok(Self { port, files })
+        Ok(Self { port, shared })
     }
 
     pub fn register(&self, path: &Path) -> Result<String, String> {
@@ -72,7 +101,7 @@ impl MediaServer {
         if !canon.is_file() {
             return Err("Choose a video file.".into());
         }
-        let mut files = self.files.lock().expect("media registry");
+        let mut files = self.shared.files.lock().expect("media registry");
         if let Some((token, _)) = files.iter().find(|(_, stored)| *stored == &canon) {
             let token = token.clone();
             return Ok(self.url(&token));
@@ -84,6 +113,152 @@ impl MediaServer {
 
     fn url(&self, token: &str) -> String {
         format!("http://127.0.0.1:{}/media/{token}", self.port)
+    }
+
+    /// A loopback URL that streams `path` through ffmpeg as fragmented MP4.
+    /// The player appends `?t=<seconds>` to start anywhere in the file.
+    pub fn register_stream(&self, path: &Path, plan: Plan) -> Result<String, String> {
+        if self.shared.ffmpeg.is_none() {
+            return Err("Glint's FFmpeg is missing. Reinstall Glint to play this file.".into());
+        }
+        let canon = path
+            .canonicalize()
+            .map_err(|_| "Couldn't read that file.".to_string())?;
+        let mut streams = self.shared.streams.lock().expect("stream registry");
+        if let Some((token, _)) = streams
+            .iter()
+            .find(|(_, entry)| entry.path == canon && entry.plan == plan)
+        {
+            return Ok(self.stream_url(token));
+        }
+        let token = uuid::Uuid::new_v4().simple().to_string();
+        streams.insert(
+            token.clone(),
+            StreamEntry {
+                path: canon,
+                plan,
+                session: Arc::new(AtomicU64::new(0)),
+            },
+        );
+        Ok(self.stream_url(&token))
+    }
+
+    fn stream_url(&self, token: &str) -> String {
+        format!("http://127.0.0.1:{}/stream/{token}", self.port)
+    }
+}
+
+/// ffmpeg's stdout as a response body. Dropping it (client gone, aborted
+/// fetch, superseded session) drops the child, which kills ffmpeg.
+struct StreamBody {
+    _child: tokio::process::Child,
+    stdout: tokio::process::ChildStdout,
+    session: Arc<AtomicU64>,
+    id: u64,
+}
+
+impl http_body::Body for StreamBody {
+    type Data = Bytes;
+    type Error = std::io::Error;
+
+    fn poll_frame(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> Poll<Option<Result<Frame<Self::Data>, Self::Error>>> {
+        let this = self.get_mut();
+        if this.session.load(Ordering::SeqCst) != this.id {
+            return Poll::Ready(None);
+        }
+        let mut buf = vec![0_u8; 128 * 1024];
+        let mut read = ReadBuf::new(&mut buf);
+        match Pin::new(&mut this.stdout).poll_read(cx, &mut read) {
+            Poll::Pending => Poll::Pending,
+            Poll::Ready(Err(err)) => Poll::Ready(Some(Err(err))),
+            Poll::Ready(Ok(())) => {
+                let n = read.filled().len();
+                if n == 0 {
+                    return Poll::Ready(None);
+                }
+                Poll::Ready(Some(Ok(Frame::data(Bytes::copy_from_slice(read.filled())))))
+            }
+        }
+    }
+}
+
+/// Seconds from `?t=`; anything missing or invalid starts at 0.
+fn start_from_query(query: Option<&str>) -> f64 {
+    query
+        .unwrap_or("")
+        .split('&')
+        .find_map(|pair| pair.strip_prefix("t="))
+        .and_then(|value| value.parse::<f64>().ok())
+        .filter(|t| t.is_finite() && *t > 0.0)
+        .unwrap_or(0.0)
+}
+
+async fn stream(
+    State(shared): State<Shared>,
+    AxumPath(token): AxumPath<String>,
+    method: Method,
+    request: Request<Body>,
+) -> Response {
+    if method == Method::OPTIONS {
+        return empty(StatusCode::NO_CONTENT);
+    }
+    if method != Method::GET {
+        return text(StatusCode::METHOD_NOT_ALLOWED, "method not allowed");
+    }
+    let entry = {
+        let streams = shared.streams.lock().expect("stream registry");
+        streams.get(&token).cloned()
+    };
+    let (Some(entry), Some(ffmpeg)) = (entry, shared.ffmpeg.clone()) else {
+        return text(StatusCode::NOT_FOUND, "not found");
+    };
+    let start = start_from_query(request.uri().query());
+    let id = entry.session.fetch_add(1, Ordering::SeqCst) + 1;
+
+    let args = session_args(&entry.path, &entry.plan, start, &video_encoder());
+    let mut child = match process::tokio_command(&ffmpeg)
+        .args(&args)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+    {
+        Ok(child) => child,
+        Err(err) => {
+            eprintln!("couldn't start ffmpeg: {err}");
+            return text(StatusCode::INTERNAL_SERVER_ERROR, "couldn't start ffmpeg");
+        }
+    };
+    process::adopt(&child);
+    let Some(stdout) = child.stdout.take() else {
+        return text(StatusCode::INTERNAL_SERVER_ERROR, "couldn't start ffmpeg");
+    };
+    if let Some(mut stderr) = child.stderr.take() {
+        tokio::spawn(async move {
+            let mut log = Vec::new();
+            let _ = (&mut stderr).take(16 * 1024).read_to_end(&mut log).await;
+            if !log.is_empty() {
+                eprintln!("ffmpeg: {}", String::from_utf8_lossy(&log).trim());
+            }
+        });
+    }
+    let body = StreamBody {
+        _child: child,
+        stdout,
+        session: entry.session.clone(),
+        id,
+    };
+    match Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, "video/mp4")
+        .header(header::CACHE_CONTROL, "no-store")
+        .body(Body::new(body))
+    {
+        Ok(response) => with_cors(response),
+        Err(_) => text(StatusCode::INTERNAL_SERVER_ERROR, "couldn't start ffmpeg"),
     }
 }
 
@@ -144,7 +319,7 @@ impl http_body::Body for FileBody {
 }
 
 async fn serve(
-    State(files): State<Arc<Mutex<HashMap<String, PathBuf>>>>,
+    State(shared): State<Shared>,
     AxumPath(token): AxumPath<String>,
     method: Method,
     request: Request<Body>,
@@ -156,7 +331,7 @@ async fn serve(
         return text(StatusCode::METHOD_NOT_ALLOWED, "method not allowed");
     }
     let path = {
-        let files = files.lock().expect("media registry");
+        let files = shared.files.lock().expect("media registry");
         files.get(&token).cloned()
     };
     let Some(path) = path else {
@@ -347,6 +522,81 @@ mod tests {
             "{bad_headers}"
         );
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn reads_the_start_time() {
+        assert_eq!(super::start_from_query(None), 0.0);
+        assert_eq!(super::start_from_query(Some("t=12.5")), 12.5);
+        assert_eq!(super::start_from_query(Some("x=1&t=3")), 3.0);
+        assert_eq!(super::start_from_query(Some("t=-4")), 0.0);
+        assert_eq!(super::start_from_query(Some("t=NaN")), 0.0);
+    }
+
+    #[test]
+    fn stream_route_needs_ffmpeg() {
+        let server = MediaServer::start().unwrap();
+        let file = std::env::temp_dir().join("glint-no-ffmpeg.mkv");
+        std::fs::write(&file, b"x").unwrap();
+        let plan = crate::ffmpeg::plan::Plan {
+            mode: crate::ffmpeg::plan::Mode::Remux,
+            video: crate::ffmpeg::plan::VideoAction::None,
+            audio: None,
+        };
+        assert!(server.register_stream(&file, plan).is_err());
+        let _ = std::fs::remove_file(&file);
+    }
+
+    /// End to end with a real ffmpeg and media file. Runs only when
+    /// GLINT_FFMPEG_DIR and GLINT_TEST_MEDIA are set (an MKV with AC3/TrueHD
+    /// audio works well).
+    #[test]
+    fn streams_fragmented_mp4_from_any_time() {
+        let (Some(ffmpeg), Ok(media)) = (
+            crate::ffmpeg::tool_path("ffmpeg"),
+            std::env::var("GLINT_TEST_MEDIA"),
+        ) else {
+            return;
+        };
+        let ffprobe = crate::ffmpeg::tool_path("ffprobe").unwrap();
+        let path = std::path::PathBuf::from(media);
+        let probe = crate::ffmpeg::probe::run(&ffprobe, &path).unwrap();
+        let plan = crate::ffmpeg::plan::plan(&probe, true);
+        let server = MediaServer::start_with(Some(ffmpeg)).unwrap();
+        let url = server.register_stream(&path, plan).unwrap();
+        for start in [0.0_f64, 8.0] {
+            let (status, headers, body) = http(&format!("{url}?t={start}"), None);
+            assert_eq!(status, 200, "{headers}");
+            assert_eq!(&body[4..8], b"ftyp");
+            assert!(body.windows(4).any(|w| w == b"moov"));
+            let first = first_tfdt_seconds(&body).expect("a fragment");
+            let expected = probe.start_time + start + crate::ffmpeg::args::TIMESTAMP_PAD;
+            // Copied video starts at the keyframe at or before the seek point.
+            assert!(first <= expected + 0.1, "{first} vs {expected}");
+            assert!(first >= expected - 10.0, "{first} vs {expected}");
+        }
+    }
+
+    /// First video `tfdt` in seconds, using the first track's `mdhd` timescale.
+    fn first_tfdt_seconds(data: &[u8]) -> Option<f64> {
+        let find = |name: &[u8], from: usize| {
+            data[from..]
+                .windows(4)
+                .position(|w| w == name)
+                .map(|p| p + from)
+        };
+        let mdhd = find(b"mdhd", 0)?;
+        let version = data[mdhd + 4];
+        let scale_at = if version == 1 { mdhd + 24 } else { mdhd + 16 };
+        let scale = u32::from_be_bytes(data[scale_at..scale_at + 4].try_into().ok()?) as f64;
+        let moof = find(b"moof", 0)?;
+        let tfdt = find(b"tfdt", moof)?;
+        let value = if data[tfdt + 4] == 1 {
+            u64::from_be_bytes(data[tfdt + 8..tfdt + 16].try_into().ok()?) as f64
+        } else {
+            u32::from_be_bytes(data[tfdt + 8..tfdt + 12].try_into().ok()?) as f64
+        };
+        Some(value / scale)
     }
 
     fn http(url: &str, range: Option<&str>) -> (u16, String, Vec<u8>) {

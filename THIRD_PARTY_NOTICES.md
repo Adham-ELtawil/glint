@@ -1,6 +1,6 @@
 # Third-party notices
 
-Glint is [MIT](LICENSE) licensed. The Windows app and installer also include the third-party software listed here, under its own licenses. None of it is GPL or LGPL.
+Glint is [MIT](LICENSE) licensed. The Windows app and installer also include the third-party software listed here, under its own licenses. The only LGPL component is FFmpeg, which Glint runs as a separate program; nothing is GPL.
 
 This list was generated on 2026-10-25 for Glint 0.1.6 from the lockfiles, not written by hand:
 
@@ -13,6 +13,14 @@ npx license-checker-rseidelsohn --production --excludePrivatePackages
 ```
 
 Run the same commands to refresh it when dependencies change. Each package's full license text is in its source repository, linked below.
+
+## FFmpeg
+
+Since 0.2.0 the Windows installer includes `ffmpeg.exe` and `ffprobe.exe`, an unmodified build of [FFmpeg](https://ffmpeg.org) 9.0.2 with only LGPL components enabled (no `--enable-gpl` or `--enable-nonfree`). FFmpeg is licensed under the **GNU Lesser General Public License, version 2.1 or later**. Glint starts these programs as separate processes and does not link to FFmpeg's libraries, so you can replace them with any other FFmpeg build in Glint's install folder.
+
+- License text: [`src-tauri/licenses/FFmpeg-LGPL-2.1.txt`](src-tauri/licenses/FFmpeg-LGPL-2.1.txt), installed as `licenses\FFmpeg-LGPL-2.1.txt` next to Glint.
+- Source and exact configure line: [`src-tauri/licenses/FFmpeg-BUILD.txt`](src-tauri/licenses/FFmpeg-BUILD.txt), installed beside it. The source is the release tarball at <https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz>.
+- FFmpeg is a trademark of Fabrice Bellard, originator of the FFmpeg project.
 
 ## Roboto font
 
@@ -456,7 +464,7 @@ Notes on the licenses that aren't MIT or Apache-2.0:
 
 - The installer is built with [NSIS](https://nsis.sourceforge.io), which is licensed under the [zlib/libpng license](https://nsis.sourceforge.io/License). Its output is not subject to NSIS's license.
 - Glint draws its window with [Microsoft Edge WebView2](https://developer.microsoft.com/microsoft-edge/webview2/). WebView2 is not included in the installer. If it's missing, the installer downloads Microsoft's bootstrapper, which installs the runtime under Microsoft's own terms.
-- Video and audio decoding is done by WebView2 and Windows. Glint ships no codecs of its own.
+- MP4 and WebM are decoded by WebView2 and Windows. Other formats are read and, where needed, converted by the bundled FFmpeg (above); its H.264 encoding uses Windows' own Media Foundation encoder.
 
 ## Glint's own assets
 

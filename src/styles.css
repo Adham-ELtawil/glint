@@ -2079,6 +2079,25 @@ video::cue {
   padding: 6px 16px 4px;
   color: var(--dim);
   font-size: 12px;
+  max-width: 260px;
+}
+
+/* A brief note when a file plays through Glint's ffmpeg. */
+.convert-pill {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 5;
+  padding: 4px 10px;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 14px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.convert-pill[hidden] {
+  display: none;
 }
 
 /* Press-and-hold Space: YouTube's "2x" pill at the top center. */

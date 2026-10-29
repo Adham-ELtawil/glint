@@ -22,6 +22,10 @@ pub struct ThumbMeta {
     pub failed: bool,
     #[serde(default)]
     pub duration: Option<f64>,
+    /// Set by Glint 0.2.0+, which tries its bundled ffmpeg before giving up.
+    /// Failures saved by older versions (webview only) are retried once.
+    #[serde(default)]
+    pub ffmpeg: bool,
 }
 
 /// Stable across Rust versions and platforms (unlike `DefaultHasher`):
@@ -86,7 +90,7 @@ impl ThumbCache {
                 })
         };
         CachedThumb {
-            failed: meta.failed && data_url.is_none(),
+            failed: meta.failed && meta.ffmpeg && data_url.is_none(),
             duration: meta
                 .duration
                 .filter(|value| value.is_finite() && *value > 0.0),
@@ -123,6 +127,7 @@ impl ThumbCache {
                 ThumbMeta {
                     failed: false,
                     duration,
+                    ffmpeg: true,
                 }
             }
             None => {
@@ -130,6 +135,7 @@ impl ThumbCache {
                 ThumbMeta {
                     failed: true,
                     duration,
+                    ffmpeg: true,
                 }
             }
         };
@@ -260,6 +266,18 @@ mod tests {
         assert!(!hit.failed);
         assert!(hit.data_url.is_some());
         assert_eq!(hit.duration, None);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn retries_failures_saved_before_ffmpeg() {
+        let dir = test_dir("thumb-old-fail");
+        let cache = ThumbCache::new(dir.clone());
+        let key = cache_key("/v/old.mkv", 1, 2);
+        std::fs::create_dir_all(&dir).unwrap();
+        // What Glint 0.1.x wrote when the webview couldn't decode a file.
+        std::fs::write(dir.join(format!("{key}.json")), br#"{"failed":true}"#).unwrap();
+        assert!(!cache.lookup(&key).failed);
         let _ = std::fs::remove_dir_all(&dir);
     }
 

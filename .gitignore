@@ -10,3 +10,6 @@ src-tauri/gen/schemas
 
 # Local QA media, not part of the app
 public/qa/
+
+# FFmpeg executables bundled into local builds (not committed)
+src-tauri/binaries/

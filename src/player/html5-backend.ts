@@ -1,18 +1,22 @@
 import type { MediaSource } from "../model/media";
 import {
   emptySnapshot,
+  STREAM_ERROR,
   type PlaybackBackend,
   type PlaybackSnapshot,
   type SubtitleCueTrack,
   type TimeRange,
+  type VideoHealth,
 } from "./backend";
 import { reachedEnd } from "./end";
+import { MseFeeder } from "./mse-feeder";
 
 /**
  * Plays through the webview's HTML5 media engine (WebView2 on Windows,
  * WebKitGTK on Linux). Formats are whatever that engine can decode — typically
- * MP4 (H.264/AAC) and WebM. Anything else surfaces as a media error so the UI
- * can explain it.
+ * MP4 (H.264/AAC) and WebM. Files the engine can't play arrive with a
+ * `stream` (Glint's bundled ffmpeg, fed through Media Source Extensions by
+ * `MseFeeder`); the element and its events are the same either way.
  */
 export class Html5Backend implements PlaybackBackend {
   readonly kind = "html5" as const;
@@ -25,6 +29,8 @@ export class Html5Backend implements PlaybackBackend {
   private onFail: (() => void) | null = null;
   /** Chrome leaves video.ended true until a seek away from the end commits. */
   private suppressEnd = false;
+  private feeder: MseFeeder | null = null;
+  private streamFailure: string | null = null;
 
   constructor() {
     const video = document.createElement("video");
@@ -52,6 +58,7 @@ export class Html5Backend implements PlaybackBackend {
       buffered: [],
       buffering: true,
       errorCode: null,
+      errorDetail: null,
       width: 0,
       height: 0,
     };
@@ -60,6 +67,9 @@ export class Html5Backend implements PlaybackBackend {
     const video = this.video;
     this.detachLoad();
     video.pause();
+    this.feeder?.dispose();
+    this.feeder = null;
+    this.streamFailure = null;
 
     return new Promise((resolve, reject) => {
       const onReady = () => {
@@ -76,9 +86,10 @@ export class Html5Backend implements PlaybackBackend {
       };
       const onFail = () => {
         this.detachLoad();
-        const code = video.error?.code ?? 4;
+        const code = this.streamFailure ? STREAM_ERROR : (video.error?.code ?? 4);
         this.snapshot.status = "error";
         this.snapshot.errorCode = code;
+        this.snapshot.errorDetail = this.streamFailure;
         this.snapshot.buffering = false;
         this.emit();
         reject(new Error(`media error ${code}`));
@@ -90,9 +101,40 @@ export class Html5Backend implements PlaybackBackend {
       // CORS so subtitle blob tracks and range requests are allowed against
       // the loopback media server. The server sends Access-Control-Allow-Origin.
       video.crossOrigin = "anonymous";
-      video.src = source.url;
-      video.load();
+      if (source.stream) {
+        const feeder = new MseFeeder(video, source.stream);
+        feeder.onFailure = (message) => this.failStream(feeder, message);
+        this.feeder = feeder;
+        // Setting src starts loading; calling load() again would detach the MediaSource.
+        feeder.attach();
+      } else {
+        video.src = source.url;
+        video.load();
+      }
     });
+  }
+
+  videoHealth(): VideoHealth {
+    const quality = this.video.getVideoPlaybackQuality?.();
+    return {
+      width: this.video.videoWidth,
+      frames: quality ? quality.totalVideoFrames : null,
+    };
+  }
+
+  private failStream(feeder: MseFeeder, message: string): void {
+    if (feeder !== this.feeder) return;
+    this.streamFailure = message;
+    if (this.onFail) {
+      this.onFail();
+      return;
+    }
+    this.video.pause();
+    this.snapshot.status = "error";
+    this.snapshot.errorCode = STREAM_ERROR;
+    this.snapshot.errorDetail = message;
+    this.snapshot.buffering = false;
+    this.emit();
   }
 
   async play(): Promise<void> {
@@ -204,6 +246,8 @@ export class Html5Backend implements PlaybackBackend {
 
   destroy(): void {
     this.detachLoad();
+    this.feeder?.dispose();
+    this.feeder = null;
     this.clearTracks();
     this.video.pause();
     this.video.removeAttribute("src");

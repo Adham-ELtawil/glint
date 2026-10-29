@@ -615,7 +615,7 @@ export class HomeView {
     title.textContent = "Drop a video to play";
     const copy = el("p");
     copy.textContent =
-      "Open a file or drop one anywhere on this window. MP4 and WebM play in the built-in player.";
+      "Open a file or drop one anywhere on this window. Plays MP4, MKV, AVI, MOV and more.";
     const buttons = el("div", "home-empty-actions");
     const open = textButton("Open file", "open-btn");
     open.addEventListener("click", () => this.actions.openFile());

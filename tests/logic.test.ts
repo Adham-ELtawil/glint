@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { chapterAt, parseChapters } from "../src/player/chapters";
 import { reachedEnd } from "../src/player/end";
+import { STREAM_ERROR } from "../src/player/backend";
 import { describeMediaError } from "../src/player/errors";
 import { isVideoFilename, naturalCompare, sortByFilename } from "../src/player/playlist";
 import { formatRate, stepRate } from "../src/player/rates";
@@ -65,15 +66,27 @@ describe("playlist order", () => {
 });
 
 describe("describeMediaError", () => {
-  it("explains unsupported containers without blaming the user", () => {
+  it("explains unsupported files without blaming the user", () => {
     const copy = describeMediaError({ filename: "film.mkv", code: 4, extension: "mkv" });
     expect(copy.title).toBe("This file can't be played");
     expect(copy.body).toContain("film.mkv");
-    expect(copy.body).toContain("planned");
+    expect(copy.body).not.toContain("planned");
     expect(copy.body).not.toContain("libmpv");
     expect(describeMediaError({ filename: "a.mp4", code: 2, extension: "mp4" }).title).toBe(
       "Playback was interrupted",
     );
+  });
+
+  it("passes on why a conversion failed", () => {
+    const copy = describeMediaError({
+      filename: "old.avi",
+      code: STREAM_ERROR,
+      extension: "avi",
+      detail: "Glint couldn't convert this file.",
+    });
+    expect(copy.title).toBe("This file can't be played");
+    expect(copy.body).toContain("Glint couldn't convert this file.");
+    expect(copy.body).toContain("old.avi");
   });
 });
 

@@ -1,4 +1,4 @@
-import type { OpenedMedia, PlaylistItem } from "../model/media";
+import type { OpenedMedia, PlaylistItem, StreamSource } from "../model/media";
 import type { PlaybackBackend, SubtitleCueTrack } from "./backend";
 import { chapterAt, parseChapters, type Chapter } from "./chapters";
 import { describeMediaError } from "./errors";
@@ -27,6 +27,17 @@ const SEEK_BURST_MS = 850;
 const SAVE_INTERVAL_MS = 2000;
 /** Playback speed while Space is held, like YouTube's press-and-hold. */
 export const BOOST_RATE = 2;
+/** How long after playback starts to check that a native file shows a picture. */
+export const PICTURE_CHECK_MS = 2500;
+const PICTURE_CHECK_TRIES = 4;
+
+/** The brief note shown when a file plays through Glint's converter. */
+export function convertNoteFor(stream: StreamSource | null | undefined): string | null {
+  if (!stream) return null;
+  if (stream.mode === "audio") return "Converting audio…";
+  if (stream.mode === "video") return "Converting video…";
+  return "Converting…";
+}
 
 /**
  * Owns playback policy: resume, per-file volume and speed, captions, chapters,
@@ -50,6 +61,8 @@ export class PlayerController {
   private seekBurst = { direction: 0 as -1 | 0 | 1, amount: 0, at: 0 };
   /** Rate and paused state to restore when a held-Space boost ends. */
   private boost: { rate: number; paused: boolean } | null = null;
+  private convertNote: string | null = null;
+  private pictureTimer: ReturnType<typeof setTimeout> | null = null;
   private unsubscribe: () => void;
 
   constructor(
@@ -84,8 +97,10 @@ export class PlayerController {
   async open(media: OpenedMedia): Promise<void> {
     this.persistPosition();
     this.boost = null;
+    this.clearPictureCheck();
     const generation = ++this.generation;
     this.media = media;
+    this.convertNote = convertNoteFor(media.source.stream);
     this.resumeLabel = null;
     this.errorTitle = null;
     this.errorBody = null;
@@ -110,17 +125,31 @@ export class PlayerController {
       await this.backend.load(media.source);
     } catch {
       if (generation !== this.generation) return;
+      if (this.canFallBack(media)) {
+        await this.fallBack(media);
+        return;
+      }
       this.opening = false;
-      const code = this.backend.getSnapshot().errorCode;
+      const snapshot = this.backend.getSnapshot();
       const copy = describeMediaError({
         filename: media.source.filename,
-        code,
+        code: snapshot.errorCode,
         extension: media.source.extension,
+        detail: snapshot.errorDetail,
       });
       this.publishError(copy.title, copy.body);
       return;
     }
     if (generation !== this.generation) return;
+    // Loaded, but the video track can't be decoded (no size): only the audio
+    // would play. Chromium does this for HEVC without a decoder.
+    if (
+      this.nextAttempt(media)?.source.stream?.hasVideo &&
+      this.backend.videoHealth?.().width === 0
+    ) {
+      await this.fallBack(media);
+      return;
+    }
 
     const duration = this.backend.getSnapshot().duration;
     const resumeAt = resumePosition(memory?.position ?? null, duration);
@@ -154,6 +183,66 @@ export class PlayerController {
     }
     if (generation !== this.generation) return;
     this.publish();
+    if (this.nextAttempt(media)?.source.stream?.hasVideo) {
+      this.schedulePictureCheck(generation, media, PICTURE_CHECK_TRIES);
+    }
+  }
+
+  /**
+   * What to try when a file fails or shows no picture: a native file is
+   * retried through ffmpeg (copying what it can), and an HEVC stream the PC
+   * can't decode is retried with the video converted to H.264.
+   */
+  private nextAttempt(media: OpenedMedia): OpenedMedia | null {
+    if (this.backend.kind !== "html5") return null;
+    const source = media.source;
+    let next: typeof source | null = null;
+    // A native HEVC file that fails means no HEVC decoder, so copying it won't help.
+    if (!source.stream && source.fallback && !source.transcode) {
+      next = { ...source, stream: source.fallback, fallback: null };
+    } else if (source.transcode && source.stream?.mode !== "video") {
+      next = { ...source, stream: source.transcode, fallback: null, transcode: null };
+    }
+    return next ? { ...media, source: next } : null;
+  }
+
+  private canFallBack(media: OpenedMedia): boolean {
+    return this.nextAttempt(media) != null;
+  }
+
+  private async fallBack(media: OpenedMedia): Promise<void> {
+    const retry = this.nextAttempt(media);
+    if (!retry) return;
+    // Don't let the failed attempt overwrite the saved position.
+    this.media = null;
+    await this.open(retry);
+  }
+
+  /**
+   * WebView2 can "play" a file without ever showing a frame. Once playback is
+   * under way, a file with a video track but no decoded picture is reopened
+   * the next way (see `nextAttempt`).
+   */
+  private schedulePictureCheck(generation: number, media: OpenedMedia, tries: number): void {
+    this.clearPictureCheck();
+    this.pictureTimer = setTimeout(() => {
+      this.pictureTimer = null;
+      if (generation !== this.generation || this.media !== media) return;
+      const health = this.backend.videoHealth?.();
+      if (!health) return;
+      const snapshot = this.backend.getSnapshot();
+      if (snapshot.status === "error" || snapshot.status === "ended") return;
+      if (snapshot.status !== "playing" || snapshot.currentTime < 0.5) {
+        if (tries > 1) this.schedulePictureCheck(generation, media, tries - 1);
+        return;
+      }
+      if (health.width === 0 || health.frames === 0) void this.fallBack(media);
+    }, PICTURE_CHECK_MS);
+  }
+
+  private clearPictureCheck(): void {
+    if (this.pictureTimer != null) clearTimeout(this.pictureTimer);
+    this.pictureTimer = null;
   }
 
   handleShortcut(action: ShortcutAction): void {
@@ -436,6 +525,7 @@ export class PlayerController {
   }
 
   destroy(): void {
+    this.clearPictureCheck();
     this.persist();
     this.unsubscribe();
     this.backend.destroy();
@@ -448,10 +538,15 @@ export class PlayerController {
       return;
     }
     if (snapshot.status === "error") {
+      if (!this.opening && this.canFallBack(this.media)) {
+        void this.fallBack(this.media);
+        return;
+      }
       const copy = describeMediaError({
         filename: this.media.source.filename,
         code: snapshot.errorCode,
         extension: this.media.source.extension,
+        detail: snapshot.errorDetail,
       });
       this.publishError(copy.title, copy.body);
       return;
@@ -565,6 +660,7 @@ export class PlayerController {
       theater: this.theater,
       resumeLabel: this.resumeLabel,
       boosting: this.boost != null,
+      convertNote: phase === "ready" ? this.convertNote : null,
     };
   }
 }

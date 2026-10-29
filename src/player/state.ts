@@ -28,6 +28,8 @@ export interface PlayerState {
   resumeLabel: string | null;
   /** True while Space is held for temporary 2x playback. */
   boosting: boolean;
+  /** "Converting audio…" etc. while the file plays through Glint's ffmpeg. */
+  convertNote: string | null;
 }
 
 export type FlashEffect =
@@ -63,5 +65,6 @@ export function initialState(): PlayerState {
     theater: false,
     resumeLabel: null,
     boosting: false,
+    convertNote: null,
   };
 }

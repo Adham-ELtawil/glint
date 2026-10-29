@@ -76,14 +76,14 @@ Open a video and the same control bar, shortcuts, and animations you already kno
 
 - **File → Open…** or Ctrl+O
 - Drag a video file onto the window
-- Right-click a video in Explorer and choose **Open with → Glint**. The installer registers Glint for **.mp4**, **.m4v**, and **.webm**, the formats it plays reliably. You can still open other files from Glint itself. To make it the default, choose **Open with → Choose another app**, select Glint, and tick **Always**.
+- Right-click a video in Explorer and choose **Open with → Glint**. The installer adds Glint to the **Open with** list for MP4, M4V, WebM, MKV, MOV, AVI, WMV, FLV, TS, MPEG, and the other formats below, without making it the default for any new format. To make it the default, choose **Open with → Choose another app**, select Glint, and tick **Always**.
 - From a terminal: `glint "C:\Videos\movie.mp4"`
 
 **Home screen.** Glint opens to its home screen unless you opened it with a file. Get back to it from the **Home** button at the top left, the Glint logo, **View → Home**, Backspace, or your mouse's back button. Playback pauses while you are there.
 
 - **Continue watching** lists the videos you played most recently, newest first, with how far you got. Click a card to resume, or right-click it for **Play from the beginning**. Hover a card and click **×**, or select it and press Delete, to remove it (there is an **Undo**). A video that was moved or deleted shows as unavailable.
 - **Folders.** Each folder gets its own shelf ("From Videos"), newest videos first. Glint looks at the folder and one level of subfolders, and skips hidden and system files. Add more folders with **Add a folder** at the bottom of the home screen or **File → Add folder to Home…**, and remove one from the **⋮** menu on its shelf. Removing a folder from Home doesn't delete anything.
-- **Thumbnails** are made from a frame about 10% into each video the first time it appears, then cached. Formats WebView2 can't decode (such as AVI or WMV) get a plain tile with the file type instead.
+- **Thumbnails** are made from a frame about 10% into each video the first time it appears, then cached. Formats WebView2 can't decode (such as AVI or WMV) get their thumbnail from Glint's FFmpeg; a file that can't be read at all gets a plain tile with the file type.
 - Use the arrow keys to move between cards, Enter to play, and the Menu key or Shift+F10 for the card's menu.
 
 **Playlist.** Glint lists the other videos in the same folder in natural order (`2.mp4` before `10.mp4`). At the end of a video, the end screen offers **Replay**, and **Up next** when there is another video in the folder.
@@ -135,19 +135,23 @@ The **right-click menu** on the video has Open, Open subtitle, Play/Pause, and F
 
 ## Supported formats
 
-Glint plays what the Windows WebView2 runtime can decode. In practice:
+MP4 and WebM play directly in the Windows WebView2 runtime. Everything else goes through a small build of [FFmpeg](https://ffmpeg.org) that comes with Glint: it converts only what WebView2 can't play (often just the audio), on the fly, while you watch. Nothing is written to disk, and a short **Converting…** note appears at the top left when it's in use. Seeking works anywhere in the file.
 
-| Format                                 | Status                                                                     |
-| -------------------------------------- | -------------------------------------------------------------------------- |
-| **MP4 / M4V**                          | ✅ Plays with H.264 video and AAC or MP3 audio (the most common case)      |
-| **WebM**                               | ✅ Plays with VP8, VP9, or AV1 video and Opus or Vorbis audio              |
-| **MOV**                                | ⚠️ Plays only when it contains H.264 and AAC (many iPhone videos are HEVC) |
-| **HEVC (H.265)**                       | ⚠️ Only with a hardware decoder and Microsoft's HEVC Video Extensions      |
-| **AC-3 / E-AC-3 (Dolby) audio**        | ⚠️ Only if a Dolby decoder is installed (not included in Windows 11 24H2)  |
-| **MKV, AVI, WMV, FLV, TS, MPEG, OGV**  | ❌ Not yet. Glint shows a "can't be played" message                        |
-| **DTS audio, Xvid/DivX, VC-1, MPEG-2** | ❌ Not yet                                                                 |
+| Format                                      | How it plays                                                                     |
+| ------------------------------------------- | -------------------------------------------------------------------------------- |
+| **MP4 / M4V** (H.264, AAC or MP3)           | ✅ Directly                                                                      |
+| **WebM** (VP8, VP9, AV1; Opus or Vorbis)    | ✅ Directly                                                                      |
+| **MKV** (H.264, HEVC, VP9, AV1)             | ✅ Repackaged without re-encoding the video                                      |
+| **MOV, iPhone videos**                      | ✅ Directly, or repackaged when WebView2 can't open them                         |
+| **AC-3 / E-AC-3 (Dolby), DTS, TrueHD, PCM** | ✅ Audio converted to AAC, 5.1 kept as 5.1                                       |
+| **AVI, WMV, FLV, MPEG, VOB, TS, M2TS**      | ✅ Video converted to H.264 with Windows' own encoder (Xvid/DivX, VC-1, MPEG-2)  |
+| **HEVC (H.265)**                            | ✅ Directly with Microsoft's HEVC Video Extensions, otherwise converted to H.264 |
+| **Subtitles inside MKV**                    | ❌ Not yet. Sidecar `.srt` and `.vtt` files work                                 |
+| **Audio track switching**                   | ❌ Not yet. Glint plays the file's default audio track                           |
 
-When a file can't be played, Glint tells you so instead of showing a black screen. Support for more formats, including MKV and AVI, is planned (see the [Roadmap](#roadmap)). Until then, you can convert a file to MP4 (H.264 + AAC) with a free tool like [HandBrake](https://handbrake.fr).
+Converting video uses more CPU than playing directly; repackaging and audio conversion are light. If a file still can't be played, Glint says so instead of showing a black screen.
+
+FFmpeg is licensed under the [LGPL 2.1](src-tauri/licenses/FFmpeg-LGPL-2.1.txt); see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## FAQ and troubleshooting
 
@@ -158,7 +162,7 @@ The installer isn't code-signed yet. Click **More info → Run anyway**. See [Do
 Windows is still scanning or saving the download. Wait a few seconds and run it again. If you are updating, close Glint first.
 
 **A video shows "This file can't be played".**
-The file uses a format WebView2 can't decode, such as MKV. See [Supported formats](#supported-formats). For now you can convert it to MP4 (H.264 + AAC) with a tool like [HandBrake](https://handbrake.fr).
+The file may be damaged, or it uses a codec Glint's FFmpeg doesn't include. See [Supported formats](#supported-formats). You can convert it to MP4 (H.264 + AAC) with a tool like [HandBrake](https://handbrake.fr).
 
 **The play/pause animation doesn't show.**
 Update to 0.1.2 or newer. Older versions turned off animations when Windows **Animation effects** was off, and 0.1.0 could leave the play/pause icon stuck on screen.
@@ -177,7 +181,7 @@ The folder was moved or renamed, or it is on a drive that isn't connected. Its s
 
 ## Roadmap
 
-- **More formats:** MKV, AVI, HEVC, and Dolby/DTS audio, which WebView2 can't play on its own. The player is already built so a second engine can be plugged in.
+- **More from FFmpeg:** choosing the audio track, and subtitles stored inside MKV files.
 - **Better playlists:** a visible queue, previous, and shuffle.
 - **Thumbnail previews** on the progress bar when you hover.
 - **A signed installer**, so SmartScreen stops warning.

@@ -1,4 +1,4 @@
-/** Extensions the shell will offer. Playback may still fail and show the codec error. */
+/** Extensions the shell will offer; most play through Glint's bundled ffmpeg. */
 export const VIDEO_EXTENSIONS = [
   "mp4",
   "m4v",
@@ -14,7 +14,12 @@ export const VIDEO_EXTENSIONS = [
   "flv",
   "ts",
   "m2ts",
+  "mts",
+  "vob",
   "3gp",
+  "asf",
+  "divx",
+  "f4v",
 ] as const;
 
 const VIDEO_SET = new Set<string>(VIDEO_EXTENSIONS);

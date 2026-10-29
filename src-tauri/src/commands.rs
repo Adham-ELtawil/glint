@@ -4,13 +4,16 @@ use std::sync::Mutex;
 use serde::Serialize;
 use tauri::State;
 
+use crate::ffmpeg::Tools;
 use crate::home::scan::FolderScan;
 use crate::home::{FolderInfo, MediaInfo};
 use crate::library::{self, Inspection};
 use crate::media_server::MediaServer;
+use crate::playback::{self, FrameDto, PlaybackDto};
 
 pub struct AppState {
     pub media: MediaServer,
+    pub tools: Tools,
     pub launch_files: Mutex<Vec<String>>,
 }
 
@@ -26,6 +29,7 @@ pub struct OpenedDto {
     pub subtitles: Vec<SubtitleDto>,
     pub chapters_text: Option<String>,
     pub chapters_format: Option<String>,
+    pub playback: PlaybackDto,
 }
 
 #[derive(Serialize)]
@@ -46,10 +50,34 @@ pub struct SubtitleDto {
     pub content: String,
 }
 
+/// Probing runs ffprobe, so this is async and works on a blocking thread.
 #[tauri::command]
-pub fn open_video(state: State<'_, AppState>, path: String) -> Result<OpenedDto, String> {
-    let inspection = library::inspect(PathBuf::from(&path).as_path())?;
-    to_dto(&state.media, inspection)
+pub async fn open_video(state: State<'_, AppState>, path: String) -> Result<OpenedDto, String> {
+    let media = state.media.clone();
+    let tools = state.tools.clone();
+    tauri::async_runtime::spawn_blocking(move || open_dto(&media, &tools, &path))
+        .await
+        .map_err(|_| "Couldn't open that file.".to_string())?
+}
+
+/// `open_video` without Tauri, for tests and tools.
+pub fn open_dto(media: &MediaServer, tools: &Tools, path: &str) -> Result<OpenedDto, String> {
+    let inspection = library::inspect(PathBuf::from(path).as_path())?;
+    let playback = playback::decide(media, tools, &inspection.path);
+    to_dto(media, inspection, playback)
+}
+
+/// A Home thumbnail through ffmpeg when the webview can't decode the file.
+#[tauri::command]
+pub async fn ffmpeg_frame(state: State<'_, AppState>, path: String) -> Result<FrameDto, String> {
+    let tools = state.tools.clone();
+    let file = PathBuf::from(&path);
+    if !library::is_video_path(&file) {
+        return Err("Choose a video file.".into());
+    }
+    tauri::async_runtime::spawn_blocking(move || playback::grab_frame(&tools, &file))
+        .await
+        .map_err(|_| "Couldn't read that file.".to_string())?
 }
 
 #[tauri::command]
@@ -69,7 +97,11 @@ pub fn take_launch_files(state: State<'_, AppState>) -> Vec<String> {
     std::mem::take(&mut *files)
 }
 
-fn to_dto(media: &MediaServer, inspection: Inspection) -> Result<OpenedDto, String> {
+fn to_dto(
+    media: &MediaServer,
+    inspection: Inspection,
+    playback: PlaybackDto,
+) -> Result<OpenedDto, String> {
     let url = media.register(&inspection.path)?;
     let mut playlist = Vec::with_capacity(inspection.playlist.len());
     for path in inspection.playlist {
@@ -109,6 +141,7 @@ fn to_dto(media: &MediaServer, inspection: Inspection) -> Result<OpenedDto, Stri
         subtitles,
         chapters_text: inspection.chapters_text,
         chapters_format: inspection.chapters_format,
+        playback,
     })
 }
 

@@ -20,6 +20,8 @@ export interface PlaybackSnapshot {
   rate: number;
   buffering: boolean;
   errorCode: number | null;
+  /** Why a converted stream failed, when `errorCode` is `STREAM_ERROR`. */
+  errorDetail: string | null;
   width: number;
   height: number;
 }
@@ -52,8 +54,20 @@ export interface PlaybackBackend {
   setRate(rate: number): void;
   setSubtitles(track: SubtitleCueTrack | null): void;
   getSnapshot(): PlaybackSnapshot;
+  /** Optional: decoded picture so far, for the native-playback safety net. */
+  videoHealth?(): VideoHealth;
   subscribe(listener: () => void): () => void;
   destroy(): void;
+}
+
+/** Not a `MediaError` code: Glint's ffmpeg conversion failed. */
+export const STREAM_ERROR = 100;
+
+/** What the webview has actually decoded, to catch files that "play" with no picture. */
+export interface VideoHealth {
+  width: number;
+  /** Decoded frames so far, or null when the engine can't tell. */
+  frames: number | null;
 }
 
 export function emptySnapshot(): PlaybackSnapshot {
@@ -67,6 +81,7 @@ export function emptySnapshot(): PlaybackSnapshot {
     rate: 1,
     buffering: false,
     errorCode: null,
+    errorDetail: null,
     width: 0,
     height: 0,
   };

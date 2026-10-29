@@ -1,0 +1,42 @@
+FFmpeg in Glint
+===============
+
+Glint for Windows installs ffmpeg.exe and ffprobe.exe next to Glint.exe.
+They are an unmodified build of FFmpeg 9.0.2 (https://ffmpeg.org), licensed
+under the GNU Lesser General Public License version 2.1 or later; the full
+text is in FFmpeg-LGPL-2.1.txt beside this file. FFmpeg is a trademark of
+Fabrice Bellard, originator of the FFmpeg project.
+
+Glint runs these programs as separate processes and does not link to them,
+so you can replace them with your own build of FFmpeg.
+
+Source: https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz (unmodified)
+Toolchain: llvm-mingw (x86_64-w64-mingw32-clang), static, UCRT.
+No GPL or nonfree components are enabled.
+
+Configure line:
+
+configure --arch=x86_64 --target-os=mingw32 --cross-prefix=x86_64-w64-mingw32- \
+  --cc=x86_64-w64-mingw32-clang --cxx=x86_64-w64-mingw32-clang++ \
+  --enable-static --disable-shared --extra-ldflags=-static \
+  --disable-everything \
+  --disable-autodetect \
+  --disable-doc \
+  --disable-debug \
+  --disable-network \
+  --disable-ffplay \
+  --enable-ffmpeg \
+  --enable-ffprobe \
+  --enable-small \
+  --enable-protocol=file,pipe \
+  --enable-demuxer=mov,matroska,avi,asf,flv,mpegps,mpegts,mpegvideo,h264,hevc,aac,ac3,eac3,dts,truehd,mp3,wav,ogg,srt,ass,webvtt \
+  --enable-decoder=ac3,eac3,dca,truehd,mlp,mp2,mp3,mp3float,wmav1,wmav2,wmapro,aac,aac_latm,flac,opus,vorbis,pcm_s16le,pcm_s24le,pcm_s16be,pcm_u8,pcm_dvd,pcm_bluray,adpcm_ms,mpeg1video,mpeg2video,mpeg4,msmpeg4v1,msmpeg4v2,msmpeg4v3,wmv1,wmv2,wmv3,vc1,h263,flv,h264,hevc,subrip,srt,ass,ssa,webvtt,mov_text,text \
+  --enable-encoder=aac,flac,webvtt,mpeg4,mjpeg \
+  --enable-muxer=mp4,mov,ipod,webvtt,null,matroska,mjpeg,image2pipe \
+  --enable-parser=h264,hevc,av1,vp9,vp8,aac,aac_latm,ac3,dca,mlp,mpegaudio,mpegvideo,mpeg4video,vc1,opus,vorbis,flac,h263 \
+  --enable-bsf=aac_adtstoasc,extract_extradata,h264_mp4toannexb,hevc_mp4toannexb,vp9_superframe,null \
+  --enable-filter=aresample,aformat,anull,null,scale,format,pan,atrim,trim,setpts,asetpts,fps,yadif \
+  --enable-swscale \
+  --enable-swresample \
+  --enable-mediafoundation --enable-d3d11va --enable-w32threads \
+  --enable-encoder=h264_mf,aac_mf

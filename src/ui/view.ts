@@ -49,6 +49,8 @@ export const SPACE_HOLD_MS = 300;
 
 /** Transparent gap between chapter segments on the progress bar (YouTube uses 4px). */
 const CHAPTER_GAP_PX = 4;
+/** How long the "Converting…" note stays up. */
+export const CONVERT_NOTE_MS = 3500;
 
 /** Diameter of the volume thumb; keep in sync with `.volume-slider` in styles.css. */
 const VOLUME_THUMB_PX = 12;
@@ -71,6 +73,8 @@ export class PlayerView {
   private spaceTimer = 0;
   private spaceBoosting = false;
   private boostPill!: HTMLElement;
+  private convertPill!: HTMLElement;
+  private convertTimer = 0;
   private pointerX = Number.NaN;
   private pointerY = Number.NaN;
   private suppressPointerUntil = 0;
@@ -254,6 +258,17 @@ export class PlayerView {
     }
     if (!showResume) this.resume.hidden = true;
     this.boostPill.hidden = !(state.boosting && state.phase === "ready");
+
+    // A brief note that the file plays through Glint's converter.
+    if (state.convertNote && state.convertNote !== previous?.convertNote) {
+      this.convertPill.textContent = state.convertNote;
+      this.convertPill.hidden = false;
+      window.clearTimeout(this.convertTimer);
+      this.convertTimer = window.setTimeout(() => {
+        this.convertPill.hidden = true;
+      }, CONVERT_NOTE_MS);
+    }
+    if (!state.convertNote) this.convertPill.hidden = true;
 
     if (this.settingsOpen && settingsChanged(previous, state)) this.paintSettings();
     if (this.menuName && menuChanged(previous, state)) this.paintMenu();
@@ -457,6 +472,10 @@ export class PlayerView {
     boostArrows.textContent = "\u25B6\u25B6";
     this.boostPill.append(boostRate, boostArrows);
 
+    this.convertPill = el("div", "convert-pill");
+    this.convertPill.hidden = true;
+    this.convertPill.setAttribute("role", "status");
+
     this.bigPlay = button("big-play", "Play", "play");
     this.bigPlay.addEventListener("click", (event) => {
       event.stopPropagation();
@@ -480,7 +499,7 @@ export class PlayerView {
     emptyTitle.textContent = "Drop a video to play";
     const emptyCopy = el("p");
     emptyCopy.textContent =
-      "MP4 and WebM play in the built-in player. Use File → Open, or drop a file on the window.";
+      "Plays MP4, MKV, AVI, MOV and more. Use File → Open, or drop a file on the window.";
     const openBtn = el("button", "open-btn");
     openBtn.type = "button";
     openBtn.textContent = "Open file";
@@ -604,6 +623,7 @@ export class PlayerView {
       this.gradient,
       this.feedback,
       this.boostPill,
+      this.convertPill,
       this.bigPlay,
       this.ended,
       this.empty,
@@ -1038,6 +1058,10 @@ export class PlayerView {
       const note = document.createElement("div");
       note.className = "menu-note";
       note.textContent = `Glint ${APP_VERSION}`;
+      const credit = document.createElement("div");
+      credit.className = "menu-note";
+      credit.textContent =
+        "Plays more formats with FFmpeg (ffmpeg.org), licensed under the LGPLv2.1.";
       this.menu.append(
         menuItem(
           "Check for updates…",
@@ -1047,6 +1071,7 @@ export class PlayerView {
         ),
         separator(),
         note,
+        credit,
       );
     }
   }

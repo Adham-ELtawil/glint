@@ -1,12 +1,13 @@
-import { describe, expect, it } from "vitest";
-import type { OpenedMedia } from "../src/model/media";
+import { describe, expect, it, vi } from "vitest";
+import type { MediaSource as Source, OpenedMedia, StreamSource } from "../src/model/media";
 import {
   emptySnapshot,
   type PlaybackBackend,
   type PlaybackSnapshot,
   type SubtitleCueTrack,
+  type VideoHealth,
 } from "../src/player/backend";
-import { PlayerController } from "../src/player/controller";
+import { PICTURE_CHECK_MS, PlayerController } from "../src/player/controller";
 import { createResumeStore, memoryStorage } from "../src/player/resume-store";
 import type { ShortcutAction } from "../src/player/shortcuts";
 import type { FlashEffect, PlayerState } from "../src/player/state";
@@ -15,18 +16,23 @@ class FakeBackend implements PlaybackBackend {
   readonly kind = "html5" as const;
   duration = 200;
   failCode: number | null = null;
+  /** Fail only files the webview would play itself (no ffmpeg stream). */
+  failNative = false;
+  health: VideoHealth = { width: 640, frames: 24 };
+  loaded: Source[] = [];
   subtitles: string | null = null;
   private snapshot: PlaybackSnapshot = emptySnapshot();
   private listeners = new Set<() => void>();
 
   attach(): void {}
 
-  async load(): Promise<void> {
-    if (this.failCode != null) {
+  async load(source: Source): Promise<void> {
+    this.loaded.push(source);
+    if (this.failCode != null || (this.failNative && !source.stream)) {
       this.snapshot = {
         ...this.snapshot,
         status: "error",
-        errorCode: this.failCode,
+        errorCode: this.failCode ?? 4,
         currentTime: 0,
       };
       this.emit();
@@ -79,6 +85,15 @@ class FakeBackend implements PlaybackBackend {
 
   getSnapshot(): PlaybackSnapshot {
     return this.snapshot;
+  }
+
+  videoHealth(): VideoHealth {
+    return this.health;
+  }
+
+  advance(time: number): void {
+    this.snapshot = { ...this.snapshot, currentTime: time };
+    this.emit();
   }
 
   subscribe(listener: () => void): () => void {
@@ -284,5 +299,142 @@ describe("held-Space 2x boost", () => {
     expect(backend.getSnapshot().rate).not.toBe(2);
     player.endBoost();
     expect(backend.getSnapshot().rate).not.toBe(2);
+  });
+
+  describe("files Glint converts with ffmpeg", () => {
+    const stream = (mode: StreamSource["mode"]): StreamSource => ({
+      url: "http://127.0.0.1/stream/t1",
+      mode,
+      duration: 200,
+      timeOffset: 10,
+      hasVideo: true,
+    });
+    const withSource = (id: string, extra: Partial<Source>) => {
+      const base = media(id);
+      return { ...base, source: { ...base.source, ...extra } };
+    };
+
+    it("shows a brief converting note for streamed files only", async () => {
+      const backend = new FakeBackend();
+      const sink = new RecordingSink();
+      const player = new PlayerController(backend, createResumeStore(memoryStorage()), sink);
+      await player.open(withSource("/v/a.mkv", { stream: stream("audio") }));
+      expect(sink.state?.convertNote).toBe("Converting audio…");
+      await player.open(withSource("/v/b.avi", { stream: stream("video") }));
+      expect(sink.state?.convertNote).toBe("Converting video…");
+      await player.open(withSource("/v/c.mov", { stream: stream("remux") }));
+      expect(sink.state?.convertNote).toBe("Converting…");
+      await player.open(media("/v/d.mp4"));
+      expect(sink.state?.convertNote).toBeNull();
+    });
+
+    it("retries a native file through ffmpeg when the webview rejects it", async () => {
+      const store = createResumeStore(memoryStorage());
+      store.updateFile("/v/odd.m4v", { position: 40 });
+      const backend = new FakeBackend();
+      backend.failNative = true;
+      const sink = new RecordingSink();
+      const player = new PlayerController(backend, store, sink);
+      await player.open(withSource("/v/odd.m4v", { fallback: stream("remux") }));
+      expect(backend.loaded.map((source) => source.stream?.mode ?? "native")).toEqual([
+        "native",
+        "remux",
+      ]);
+      expect(sink.state?.phase).toBe("ready");
+      expect(sink.state?.convertNote).toBe("Converting…");
+      // The failed attempt didn't wipe the saved position.
+      expect(backend.getSnapshot().currentTime).toBe(40);
+    });
+
+    it("reports the error when there's nothing to fall back on", async () => {
+      const backend = new FakeBackend();
+      backend.failNative = true;
+      const sink = new RecordingSink();
+      const player = new PlayerController(backend, createResumeStore(memoryStorage()), sink);
+      await player.open(media("/v/broken.mp4"));
+      expect(backend.loaded).toHaveLength(1);
+      expect(sink.state?.phase).toBe("error");
+    });
+
+    it("switches to ffmpeg when a native file plays with no picture", async () => {
+      vi.useFakeTimers();
+      try {
+        const backend = new FakeBackend();
+        // Sized at load, but no frame ever arrives.
+        backend.health = { width: 640, frames: 0 };
+        const sink = new RecordingSink();
+        const player = new PlayerController(backend, createResumeStore(memoryStorage()), sink);
+        await player.open(withSource("/v/blank.m4v", { fallback: stream("remux") }));
+        backend.advance(2);
+        await vi.advanceTimersByTimeAsync(PICTURE_CHECK_MS + 10);
+        expect(backend.loaded.map((source) => source.stream?.mode ?? "native")).toEqual([
+          "native",
+          "remux",
+        ]);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("switches straight away when the video track has no size", async () => {
+      const backend = new FakeBackend();
+      backend.health = { width: 0, frames: 0 };
+      const sink = new RecordingSink();
+      const player = new PlayerController(backend, createResumeStore(memoryStorage()), sink);
+      await player.open(
+        withSource("/v/hevc.mp4", { fallback: stream("remux"), transcode: stream("video") }),
+      );
+      expect(backend.loaded.map((source) => source.stream?.mode ?? "native")).toEqual([
+        "native",
+        "video",
+      ]);
+    });
+
+    it("leaves a native file alone when it shows a picture", async () => {
+      vi.useFakeTimers();
+      try {
+        const backend = new FakeBackend();
+        const sink = new RecordingSink();
+        const player = new PlayerController(backend, createResumeStore(memoryStorage()), sink);
+        await player.open(withSource("/v/fine.mp4", { fallback: stream("remux") }));
+        backend.advance(2);
+        await vi.advanceTimersByTimeAsync(PICTURE_CHECK_MS * 5);
+        expect(backend.loaded).toHaveLength(1);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("converts HEVC to H.264 when this PC can't decode it", async () => {
+      const backend = new FakeBackend();
+      backend.failNative = true;
+      const sink = new RecordingSink();
+      const player = new PlayerController(backend, createResumeStore(memoryStorage()), sink);
+      // A copied HEVC stream fails too, the way a missing decoder does.
+      const failingCopy = backend.load.bind(backend);
+      backend.load = async (source) => {
+        if (source.stream && source.stream.mode !== "video") {
+          backend.loaded.push(source);
+          throw new Error("no HEVC decoder");
+        }
+        return failingCopy(source);
+      };
+      await player.open(
+        withSource("/v/iphone.mov", { fallback: stream("remux"), transcode: stream("video") }),
+      );
+      expect(backend.loaded.map((source) => source.stream?.mode ?? "native")).toEqual([
+        "native",
+        "video",
+      ]);
+      await player.open(
+        withSource("/v/hevc.mkv", { stream: stream("audio"), transcode: stream("video") }),
+      );
+      expect(backend.loaded.slice(2).map((source) => source.stream?.mode)).toEqual([
+        "audio",
+        "video",
+      ]);
+      expect(sink.state?.phase).toBe("ready");
+      expect(sink.state?.convertNote).toBe("Converting video…");
+    });
   });
 });

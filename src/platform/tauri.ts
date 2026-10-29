@@ -3,8 +3,14 @@ import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open } from "@tauri-apps/plugin-dialog";
-import type { FolderScan, LibraryApi, LibraryFolder, MediaInfo } from "../home/library";
-import type { OpenedMedia, PlaylistItem, SubtitleFile } from "../model/media";
+import type {
+  FfmpegFrame,
+  FolderScan,
+  LibraryApi,
+  LibraryFolder,
+  MediaInfo,
+} from "../home/library";
+import type { OpenedMedia, PlaylistItem, StreamSource, SubtitleFile } from "../model/media";
 import type { DownloadEvent, UpdateInfo, UpdaterApi } from "../update/model";
 import { VIDEO_EXTENSIONS } from "../player/playlist";
 
@@ -18,6 +24,14 @@ interface OpenedDto {
   subtitles: SubtitleDto[];
   chaptersText: string | null;
   chaptersFormat: "json" | "vtt" | null;
+  playback?: PlaybackDto | null;
+}
+
+interface PlaybackDto {
+  mode: "native" | "audio" | "remux" | "video";
+  stream: StreamSource | null;
+  fallback: StreamSource | null;
+  transcode?: StreamSource | null;
 }
 
 interface PlaylistDto {
@@ -151,6 +165,7 @@ export const desktopLibrary: LibraryApi = {
   mediaInfo: (paths) => invoke<MediaInfo[]>("media_info", { paths }),
   saveThumbnail: (path, data, duration) => invoke<void>("save_thumbnail", { path, data, duration }),
   mediaUrl: (path) => invoke<string>("media_url", { path }),
+  ffmpegFrame: (path) => invoke<FfmpegFrame>("ffmpeg_frame", { path }),
 };
 
 /** Glint's updater in Rust (tauri-plugin-updater, signed GitHub releases). */
@@ -177,6 +192,9 @@ function fromDto(dto: OpenedDto): OpenedMedia {
       url: dto.url,
       filename: dto.filename,
       extension: dto.extension,
+      stream: dto.playback?.stream ?? null,
+      fallback: dto.playback?.fallback ?? null,
+      transcode: dto.playback?.transcode ?? null,
     },
     playlist,
     subtitles: dto.subtitles.map((file) => ({

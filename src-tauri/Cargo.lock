@@ -1431,7 +1431,7 @@ dependencies = [
 
 [[package]]
 name = "glint"
-version = "0.1.7"
+version = "0.2.0"
 dependencies = [
  "axum",
  "base64 0.21.7",
@@ -1448,6 +1448,7 @@ dependencies = [
  "tauri-plugin-updater",
  "tokio",
  "uuid",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -4213,6 +4214,7 @@ dependencies = [
  "libc",
  "mio",
  "pin-project-lite",
+ "signal-hook-registry",
  "socket2",
  "tokio-macros",
  "windows-sys 0.61.2",

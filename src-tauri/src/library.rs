@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 const VIDEO_EXTENSIONS: &[&str] = &[
     "mp4", "m4v", "webm", "mkv", "mov", "avi", "ogv", "ogg", "mpeg", "mpg", "wmv", "flv", "ts",
-    "m2ts", "3gp",
+    "m2ts", "mts", "vob", "3gp", "asf", "divx", "f4v",
 ];
 
 const SUBTITLE_LIMIT: u64 = 2_000_000;

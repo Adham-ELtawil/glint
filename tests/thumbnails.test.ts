@@ -140,4 +140,42 @@ describe("thumbnail service", () => {
     await service.get("/a.mp4");
     expect(calls.lookups).toHaveLength(2);
   });
+
+  it("asks ffmpeg for frames the webview can't decode", async () => {
+    const { api, calls } = fakeApi({});
+    const ffmpegFrame = vi.fn(async (path: string) => ({
+      dataUrl: `data:image/jpeg;base64,${path.endsWith(".mkv") ? "MK" : "??"}`,
+      duration: 61,
+    }));
+    const service = new ThumbnailService({ ...api, ffmpegFrame }, async () => {
+      throw new GrabError("no decoder", true);
+    });
+    expect(await service.get("/v/a.mkv")).toEqual({
+      kind: "image",
+      url: "data:image/jpeg;base64,MK",
+      duration: 61,
+    });
+    await Promise.resolve();
+    expect(ffmpegFrame).toHaveBeenCalledWith("/v/a.mkv");
+    expect(calls.saved).toEqual([["/v/a.mkv", "data:image/jpeg;base64,MK", 61]]);
+  });
+
+  it("remembers files neither the webview nor ffmpeg can read", async () => {
+    const { api, calls } = fakeApi({});
+    const ffmpegFrame = vi.fn(async () => {
+      throw new Error("ffmpeg failed");
+    });
+    const transient = vi.fn(async () => {
+      throw new GrabError("timeout", false);
+    });
+    const broken = new ThumbnailService({ ...api, ffmpegFrame }, async () => {
+      throw new GrabError("no decoder", true);
+    });
+    expect((await broken.get("/v/bad.avi")).kind).toBe("fallback");
+    await Promise.resolve();
+    expect(calls.saved).toEqual([["/v/bad.avi", null, null]]);
+    // A timeout isn't a decode failure, so ffmpeg isn't asked.
+    await new ThumbnailService({ ...api, ffmpegFrame }, transient).get("/v/slow.mp4");
+    expect(ffmpegFrame).toHaveBeenCalledTimes(1);
+  });
 });
