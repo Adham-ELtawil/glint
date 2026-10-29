@@ -12,11 +12,11 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 ![Platform: Windows 10 | 11](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078d4)
 
-<img src="docs/glint-promo.gif" width="800" alt="Glint playing a video: play and pause with K, skip with J and L, jump with the number keys, and change the volume" />
+<img src="docs/glint-promo.gif" width="720" alt="Glint playing a waterfall clip with subtitles and chapters: play and pause with K, change the volume with the arrow keys, and hold Space for 2x" />
 
 [![Download for Windows](https://img.shields.io/badge/Download%20for%20Windows-ff4d6d?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/Adham-ELtawil/glint/releases/latest)
 
-Free and open source · Windows 10 and 11 · about 2.5 MB
+Free and open source · Windows 10 and 11 · about 5.6 MB
 
 </div>
 
@@ -55,7 +55,7 @@ Open a video and the same control bar, shortcuts, and animations you already kno
 
 ## Download and install
 
-1. Go to the [latest release](https://github.com/Adham-ELtawil/glint/releases/latest) and download `Glint_<version>_x64-setup.exe` (about 3.3 MB). Glint runs on 64-bit Windows 10 and 11.
+1. Go to the [latest release](https://github.com/Adham-ELtawil/glint/releases/latest) and download `Glint_<version>_x64-setup.exe` (about 5.6 MB). Glint runs on 64-bit Windows 10 and 11.
 2. Run it. Glint installs for your user account only, so it doesn't ask for administrator rights.
 3. Open Glint from the Start menu, or right-click a video and choose **Open with → Glint**.
 
@@ -380,6 +380,6 @@ Bug reports, ideas, and pull requests are welcome. Open an [issue](https://githu
 
 [MIT](LICENSE) © 2026 Adham Yasser. Glint also includes open-source software and the Roboto font under their own licenses; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-The movie footage in the screenshots and the animation is from the Blender open movies [_Tears of Steel_](https://mango.blender.org) and [_Sintel_](https://durian.blender.org) (© Blender Foundation, CC BY 3.0) and [_Spring_](https://studio.blender.org/films/spring/) (© Blender Foundation, CC BY 4.0).
+The footage in the screenshots and the animation comes from Wikimedia Commons: [_Delaneys Falls_](https://commons.wikimedia.org/wiki/File:Delaneys_Falls.webm) by Psypherium (CC0), [_Mazandaran Province 07_](https://commons.wikimedia.org/wiki/File:Mazandaran_Province_07.ogv) by Mostafameraji (CC0), [_Cosumnes River Preserve_](<https://commons.wikimedia.org/wiki/File:Cosumnes_River_Preserve_(38396309891).webm>) by the Bureau of Land Management (public domain), and [_Grand Canyon National Park: Timelapse Video - Summer Clouds_](<https://commons.wikimedia.org/wiki/File:Grand_Canyon_National_Park-_Timelapse_Video_-_Summer_Clouds_(7775362134).webm>) by the National Park Service (public domain). The home screen also shows the Blender open movie [_Spring_](https://studio.blender.org/films/spring/) (© Blender Foundation, CC BY 4.0).
 
 Glint is an independent project. It is not affiliated with or endorsed by YouTube or Google.
