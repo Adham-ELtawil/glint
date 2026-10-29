@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Glint: a free video player for Windows that feels like YouTube</title>
+  <meta name="description" content="Glint is a free, open-source video player for Windows 10 and 11 with the YouTube controls and shortcuts you already know. Plays MP4, MKV, AVI, WMV, MOV and more. No ads, no account, no telemetry." />
+  <meta name="theme-color" content="#0f0f0f" />
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="styles.css" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Glint: a video player for Windows that feels like YouTube" />
+  <meta property="og:description" content="Free and open source. YouTube-style controls and shortcuts, Continue watching, and wide format support. Windows 10 and 11." />
+  <meta property="og:image" content="https://adham-eltawil.github.io/glint/assets/og.jpg" />
+  <meta property="og:url" content="https://adham-eltawil.github.io/glint/" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <script src="main.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="./" aria-label="Glint home">
+        <img src="assets/glint.svg" width="28" height="28" alt="" />
+        <span>Glint</span>
+      </a>
+      <nav aria-label="Main">
+        <ul class="nav-links">
+          <li><a href="#features">Features</a></li>
+          <li><a href="#formats">Formats</a></li>
+          <li><a href="#faq">FAQ</a></li>
+          <li><a href="https://github.com/Adham-ELtawil/glint" class="gh-link">
+            <svg aria-hidden="true" viewBox="0 0 16 16" width="18" height="18"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+            <span>GitHub</span></a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" tabindex="-1">
+    <section class="hero">
+      <div class="wrap hero-inner">
+        <p class="eyebrow">Free &amp; open source · Windows 10 and 11</p>
+        <h1>The YouTube player you already know,<br class="br-wide" /> for the videos on your PC.</h1>
+        <p class="lede">Glint is a small, fast video player with the same controls, shortcuts, and animations as YouTube. It opens to <strong>Continue watching</strong>, so what you were watching is one click away. No ads, no account, no telemetry.</p>
+
+        <div class="cta">
+          <a class="btn btn-primary" id="download" href="https://github.com/Adham-ELtawil/glint/releases/latest">
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M3 5.5 10.4 4.5v7H3zm0 13 7.4 1v-7H3zm8.3 1.1L21 21v-8.4h-9.7zm0-15.2v7.1H21V3z"/></svg>
+            <span id="download-label">Download for Windows</span>
+          </a>
+          <a class="btn btn-ghost" href="https://github.com/Adham-ELtawil/glint">View source on GitHub</a>
+        </div>
+        <p class="cta-meta" id="download-meta">
+          <span id="dl-version">Latest release</span> · 64-bit installer, about 5.6 MB · no admin rights needed
+        </p>
+        <p class="os-note" id="os-note" hidden>Glint is a Windows app. You can still grab the installer for a Windows PC, or <a href="https://github.com/Adham-ELtawil/glint">browse the source</a>.</p>
+
+        <figure class="hero-shot">
+          <picture>
+            <source type="image/webp" srcset="assets/player-720.webp 720w, assets/player-1280.webp 1280w" sizes="(max-width: 1080px) calc(100vw - 42px), 1038px" />
+            <img src="assets/player-1280.jpg" width="1280" height="720" alt="Glint playing a timelapse of clouds over the Grand Canyon, with a subtitle line, chapters on the red progress bar, and the YouTube-style control bar" fetchpriority="high" />
+          </picture>
+        </figure>
+      </div>
+    </section>
+
+    <section class="smartscreen-wrap" aria-labelledby="ss-title">
+      <div class="wrap">
+        <div class="callout">
+          <svg aria-hidden="true" viewBox="0 0 24 24" width="26" height="26"><path fill="currentColor" d="M12 2 3 5v6c0 5.5 3.8 10.7 9 12 5.2-1.3 9-6.5 9-12V5zm-1 6h2v6h-2zm0 8h2v2h-2z"/></svg>
+          <div>
+            <h2 id="ss-title">Seeing “Windows protected your PC”?</h2>
+            <p>Glint’s installer isn’t code-signed yet, so Microsoft Defender SmartScreen warns about it the first time. That’s normal for new, unsigned apps. Click <kbd>More info</kbd>, then <kbd>Run anyway</kbd>. Every release lists a SHA-256 you can check with <code>Get-FileHash</code>, and the installer is built from the public source by GitHub Actions.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <section id="features" class="section" aria-labelledby="features-title">
+      <div class="wrap">
+        <h2 id="features-title" class="section-title">Everything you expect, nothing you don’t</h2>
+        <ul class="grid features">
+          <li class="card">
+            <div class="icon" aria-hidden="true">▶</div>
+            <h3>YouTube-style player</h3>
+            <p>Red progress bar with buffering, hover time, and chapters. Volume slider, captions, settings, theater, and fullscreen. The controls fade while you watch.</p>
+          </li>
+          <li class="card">
+            <div class="icon" aria-hidden="true">⌨</div>
+            <h3>The shortcuts you know</h3>
+            <p>K, J, L, the arrow keys, 0–9, <kbd>&lt;</kbd> and <kbd>&gt;</kbd>, C, F, T, M. Muscle memory just works.</p>
+          </li>
+          <li class="card">
+            <div class="icon" aria-hidden="true">»</div>
+            <h3>Hold Space for 2x</h3>
+            <p>Tap Space to play or pause. Hold it to play at 2x until you let go, then you’re back to your own speed.</p>
+          </li>
+          <li class="card">
+            <div class="icon" aria-hidden="true">↺</div>
+            <h3>Remembers where you stopped</h3>
+            <p>Position, volume, mute, and speed are saved for each file. Continue watching shows thumbnails and progress.</p>
+          </li>
+          <li class="card">
+            <div class="icon" aria-hidden="true">🎞</div>
+            <h3>Plays almost anything</h3>
+            <p>MP4 and WebM play directly. MKV, AVI, WMV, MOV, FLV, MPEG, and TS go through a small bundled FFmpeg, converted on the fly.</p>
+          </li>
+          <li class="card">
+            <div class="icon" aria-hidden="true">CC</div>
+            <h3>Subtitles and chapters</h3>
+            <p>A matching <code>.srt</code> or <code>.vtt</code> loads on its own. Add a <code>.chapters.json</code> and the progress bar splits into chapters.</p>
+          </li>
+          <li class="card">
+            <div class="icon" aria-hidden="true">⟳</div>
+            <h3>Updates itself</h3>
+            <p>Glint checks for a new version when it starts and installs it in one click. Updates are signed, and unsigned downloads are refused.</p>
+          </li>
+          <li class="card">
+            <div class="icon" aria-hidden="true">🔒</div>
+            <h3>Private by design</h3>
+            <p>History, thumbnails, and settings stay on your PC. No accounts, no telemetry, nothing uploaded.</p>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="section showcase" aria-label="Screenshots">
+      <div class="wrap showcase-grid">
+        <div class="showcase-text">
+          <h2 class="section-title">Opens to what you were watching</h2>
+          <p>The home screen shows <strong>Continue watching</strong> and a shelf for each of your video folders, starting with Windows’ Videos folder. Click a card to resume, or right-click for <em>Play from the beginning</em>.</p>
+        </div>
+        <figure class="shot">
+          <picture>
+            <source type="image/webp" srcset="assets/home-720.webp 720w, assets/home-1280.webp 1280w" sizes="(max-width: 900px) calc(100vw - 42px), (max-width: 1160px) calc((100vw - 88px) / 1.8 - 2px), 594px" />
+            <img src="assets/home-1280.jpg" width="1280" height="720" loading="lazy" decoding="async" alt="Glint home screen with a Continue watching row and a From Videos shelf of nature video thumbnails" />
+          </picture>
+        </figure>
+      </div>
+      <div class="wrap showcase-grid reverse">
+        <div class="showcase-text">
+          <h2 class="section-title">Hold Space, skip the slow parts</h2>
+          <p>Just like on YouTube, holding Space plays at 2x with a small <strong>2x</strong> pill at the top. Let go and Glint goes back to the speed you had, and pauses again if the video was paused.</p>
+        </div>
+        <figure class="shot">
+          <picture>
+            <source type="image/webp" srcset="assets/hold-2x-720.webp 720w, assets/hold-2x-1280.webp 1280w" sizes="(max-width: 900px) calc(100vw - 42px), (max-width: 1160px) calc((100vw - 88px) / 2.25 - 2px), 474px" />
+            <img src="assets/hold-2x-1280.jpg" width="1280" height="720" loading="lazy" decoding="async" alt="Glint playing a video at 2x speed while Space is held, with a 2x pill at the top" />
+          </picture>
+        </figure>
+      </div>
+    </section>
+
+    <section id="shortcuts" class="section" aria-labelledby="keys-title">
+      <div class="wrap">
+        <h2 id="keys-title" class="section-title">Keyboard shortcuts</h2>
+        <div class="keys">
+          <dl>
+            <div><dt><kbd>Space</kbd> / <kbd>K</kbd></dt><dd>Play / pause</dd></div>
+            <div><dt>Hold <kbd>Space</kbd></dt><dd>2x while held</dd></div>
+            <div><dt><kbd>J</kbd> / <kbd>L</kbd></dt><dd>Back / forward 10 s</dd></div>
+            <div><dt><kbd>←</kbd> / <kbd>→</kbd></dt><dd>Back / forward 5 s</dd></div>
+            <div><dt><kbd>↑</kbd> / <kbd>↓</kbd></dt><dd>Volume ±5%</dd></div>
+            <div><dt><kbd>M</kbd></dt><dd>Mute</dd></div>
+            <div><dt><kbd>0</kbd>–<kbd>9</kbd></dt><dd>Jump to 0–90%</dd></div>
+            <div><dt><kbd>&lt;</kbd> / <kbd>&gt;</kbd></dt><dd>Slower / faster</dd></div>
+            <div><dt><kbd>C</kbd></dt><dd>Captions</dd></div>
+            <div><dt><kbd>F</kbd></dt><dd>Fullscreen</dd></div>
+            <div><dt><kbd>T</kbd></dt><dd>Theater mode</dd></div>
+            <div><dt><kbd>Shift</kbd>+<kbd>N</kbd></dt><dd>Next video in folder</dd></div>
+          </dl>
+        </div>
+      </div>
+    </section>
+
+    <section id="formats" class="section" aria-labelledby="formats-title">
+      <div class="wrap">
+        <h2 id="formats-title" class="section-title">Supported formats</h2>
+        <p class="section-sub">MP4 and WebM play directly in Windows’ WebView2. For everything else, Glint’s bundled FFmpeg converts only what’s needed, while you watch. Nothing is written to disk, and seeking works anywhere.</p>
+        <div class="table-wrap" tabindex="0" role="region" aria-labelledby="formats-title">
+          <table>
+            <thead><tr><th scope="col">Format</th><th scope="col">How it plays</th></tr></thead>
+            <tbody>
+              <tr><td>MP4 / M4V (H.264, AAC or MP3)</td><td><span class="ok" aria-hidden="true">✓</span> Directly</td></tr>
+              <tr><td>WebM (VP8, VP9, AV1; Opus or Vorbis)</td><td><span class="ok" aria-hidden="true">✓</span> Directly</td></tr>
+              <tr><td>MKV (H.264, HEVC, VP9, AV1)</td><td><span class="ok" aria-hidden="true">✓</span> Repackaged, video not re-encoded</td></tr>
+              <tr><td>MOV, iPhone videos</td><td><span class="ok" aria-hidden="true">✓</span> Directly, or repackaged when needed</td></tr>
+              <tr><td>AC-3 / E-AC-3 (Dolby), DTS, TrueHD, PCM audio</td><td><span class="ok" aria-hidden="true">✓</span> Converted to AAC, 5.1 stays 5.1</td></tr>
+              <tr><td>AVI, WMV, FLV, MPEG, VOB, TS, M2TS</td><td><span class="ok" aria-hidden="true">✓</span> Converted to H.264 with Windows’ own encoder</td></tr>
+              <tr><td>HEVC (H.265)</td><td><span class="ok" aria-hidden="true">✓</span> Directly with HEVC Video Extensions, otherwise converted</td></tr>
+              <tr><td>Subtitles inside MKV</td><td><span class="no" aria-hidden="true">—</span> Not yet (sidecar .srt / .vtt work)</td></tr>
+              <tr><td>Switching audio tracks</td><td><span class="no" aria-hidden="true">—</span> Not yet (plays the default track)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="open-source" class="section" aria-labelledby="oss-title">
+      <div class="wrap">
+        <div class="oss">
+          <div>
+            <h2 id="oss-title" class="section-title">Free and open source</h2>
+            <p>Glint is MIT-licensed, and every line is on GitHub. It’s built with <a href="https://tauri.app">Tauri 2</a> (Rust) and plain TypeScript, which is why the installer stays small. The bundled FFmpeg is an LGPL build, credited in the app.</p>
+            <p>Bugs, ideas, and pull requests are welcome.</p>
+            <div class="cta left">
+              <a class="btn btn-ghost" href="https://github.com/Adham-ELtawil/glint">Star or fork on GitHub</a>
+              <a class="btn btn-ghost" href="https://github.com/Adham-ELtawil/glint/issues/new/choose">Report a bug or suggest a feature</a>
+            </div>
+          </div>
+          <ul class="facts" aria-label="Quick facts">
+            <li><strong>MIT</strong><span>license</span></li>
+            <li><strong>&lt; 6 MB</strong><span>installer</span></li>
+            <li><strong>0</strong><span>ads or trackers</span></li>
+            <li><strong>Win 10 / 11</strong><span>64-bit</span></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="faq" class="section" aria-labelledby="faq-title">
+      <div class="wrap narrow">
+        <h2 id="faq-title" class="section-title">FAQ</h2>
+        <details>
+          <summary>Is it really free?</summary>
+          <p>Yes. Glint is free and open source under the MIT license. There are no ads, no paid tier, and no account.</p>
+        </details>
+        <details>
+          <summary>Why does Windows say “Windows protected your PC”?</summary>
+          <p>The installer isn’t code-signed yet, so SmartScreen warns about it. Click <strong>More info</strong>, then <strong>Run anyway</strong>. You can compare the file with the SHA-256 in the release notes: <code>Get-FileHash .\Glint_&lt;version&gt;_x64-setup.exe</code>.</p>
+        </details>
+        <details>
+          <summary>Does it need admin rights?</summary>
+          <p>No. Glint installs for your user account only. It uses Microsoft Edge WebView2, which is already on Windows 11 and most Windows 10 PCs; if it’s missing, the installer gets it for you.</p>
+        </details>
+        <details>
+          <summary>How do updates work?</summary>
+          <p>A few seconds after Glint starts, it checks GitHub for a new version and offers to install it in one click. <strong>Help → Check for updates…</strong> checks right away. Updates are signed, and Glint refuses any download that doesn’t match its release key.</p>
+        </details>
+        <details>
+          <summary>Will Glint become my default video player?</summary>
+          <p>Only if you choose it. The installer adds Glint to <strong>Open with</strong> for common video formats without making it the default. To make it the default, pick <strong>Open with → Choose another app</strong>, select Glint, and tick <strong>Always</strong>.</p>
+        </details>
+        <details>
+          <summary>Does Glint collect any data?</summary>
+          <p>No. History, thumbnails, and settings stay on your PC, and <strong>View → Clear watch history</strong> removes them. Glint has no telemetry and doesn’t upload anything.</p>
+        </details>
+        <details>
+          <summary>Is it affiliated with YouTube?</summary>
+          <p>No. Glint is an independent project that borrows the familiar layout and shortcuts. It is not affiliated with or endorsed by YouTube or Google.</p>
+        </details>
+      </div>
+    </section>
+
+    <section class="section final-cta" aria-labelledby="final-title">
+      <div class="wrap">
+        <img src="assets/glint.svg" width="64" height="64" alt="" />
+        <h2 id="final-title">Give your videos the player they deserve</h2>
+        <div class="cta">
+          <a class="btn btn-primary js-download" href="https://github.com/Adham-ELtawil/glint/releases/latest">Download for Windows</a>
+        </div>
+        <p class="cta-meta">Free · Windows 10 and 11 · <a href="https://github.com/Adham-ELtawil/glint/blob/main/CHANGELOG.md">What’s new</a></p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-inner">
+      <div class="brand small"><img src="assets/glint.svg" width="20" height="20" alt="" /> <span>Glint</span></div>
+      <nav aria-label="Footer">
+        <ul>
+          <li><a href="https://github.com/Adham-ELtawil/glint">GitHub</a></li>
+          <li><a href="https://github.com/Adham-ELtawil/glint/releases">Releases</a></li>
+          <li><a href="https://github.com/Adham-ELtawil/glint/blob/main/CHANGELOG.md">Changelog</a></li>
+          <li><a href="https://github.com/Adham-ELtawil/glint/blob/main/LICENSE">MIT License</a></li>
+          <li><a href="https://github.com/Adham-ELtawil/glint/blob/main/THIRD_PARTY_NOTICES.md">Third-party notices</a></li>
+        </ul>
+      </nav>
+      <p class="fine">Made by <a href="https://github.com/Adham-ELtawil">@Adham-ELtawil</a>. Footage in the screenshots, from Wikimedia Commons: <a href="https://commons.wikimedia.org/wiki/File:Grand_Canyon_National_Park-_Timelapse_Video_-_Summer_Clouds_(7775362134).webm">Grand Canyon summer clouds</a> (U.S. National Park Service, public domain), <a href="https://commons.wikimedia.org/wiki/File:Delaneys_Falls.webm">Delaneys Falls</a> (Psypherium, CC0), <a href="https://commons.wikimedia.org/wiki/File:Mazandaran_Province_07.ogv">Mazandaran Province 07</a> (Mostafameraji, CC0), and <a href="https://commons.wikimedia.org/wiki/File:Cosumnes_River_Preserve_(38396309891).webm">Cosumnes River Preserve</a> (U.S. Bureau of Land Management, public domain); plus the Blender open movie <em>Spring</em> (© Blender Foundation, CC BY 4.0). Glint is not affiliated with or endorsed by YouTube or Google.</p>
+    </div>
+  </footer>
+</body>
+</html>
