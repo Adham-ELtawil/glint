@@ -10,8 +10,13 @@ Fabrice Bellard, originator of the FFmpeg project.
 Glint runs these programs as separate processes and does not link to them,
 so you can replace them with your own build of FFmpeg.
 
-Source: https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz (unmodified)
-Toolchain: llvm-mingw (x86_64-w64-mingw32-clang), static, UCRT.
+Source (unmodified FFmpeg 9.0.2 release tarball and its signature), the
+build script and these binaries are published together at:
+  https://github.com/Adham-ELtawil/glint/releases/tag/ffmpeg-9.0.2-glint1
+Source tarball:
+  https://github.com/Adham-ELtawil/glint/releases/download/ffmpeg-9.0.2-glint1/ffmpeg-9.0.2.tar.xz
+  (also https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz)
+Toolchain: llvm-mingw 20261020 (x86_64-w64-mingw32-clang), static, UCRT.
 No GPL or nonfree components are enabled.
 
 Configure line:

@@ -53,6 +53,10 @@ jobs:
           }
           "VERSION=$tag" >> $env:GITHUB_ENV
 
+      - name: Fetch the bundled FFmpeg
+        shell: bash
+        run: bash scripts/fetch-ffmpeg.sh
+
       - run: npm ci
       - run: npm test
 
@@ -81,6 +85,9 @@ jobs:
           $src = "src-tauri/target/release/bundle/nsis/$exe"
           if (-not (Test-Path $src)) { Write-Error "Missing $src"; exit 1 }
           if (-not (Test-Path "$src.sig")) { Write-Error "Missing $src.sig"; exit 1 }
+          # The installer must carry ffmpeg.exe and ffprobe.exe (about 5 MB compressed).
+          $size = (Get-Item $src).Length
+          if ($size -lt 4500000) { Write-Error "$exe is only $size bytes; is FFmpeg missing?"; exit 1 }
           New-Item -ItemType Directory -Force out | Out-Null
           Copy-Item $src "out/$exe"
           Copy-Item "$src.sig" "out/$exe.sig"

@@ -15,6 +15,7 @@ You need [Node.js](https://nodejs.org) 22+ and [Rust](https://rustup.rs) stable.
 ```bash
 git clone https://github.com/Adham-ELtawil/glint.git
 cd glint
+bash scripts/fetch-ffmpeg.sh   # bundled FFmpeg; add --stub-host on Linux/macOS
 npm install
 npm run tauri dev     # the desktop app with hot reload
 npm run dev           # only the UI, in a browser: http://127.0.0.1:43123/?sample=1

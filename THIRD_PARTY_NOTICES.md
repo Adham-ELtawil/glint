@@ -19,7 +19,7 @@ Run the same commands to refresh it when dependencies change. Each package's ful
 Since 0.2.0 the Windows installer includes `ffmpeg.exe` and `ffprobe.exe`, an unmodified build of [FFmpeg](https://ffmpeg.org) 9.0.2 with only LGPL components enabled (no `--enable-gpl` or `--enable-nonfree`). FFmpeg is licensed under the **GNU Lesser General Public License, version 2.1 or later**. Glint starts these programs as separate processes and does not link to FFmpeg's libraries, so you can replace them with any other FFmpeg build in Glint's install folder.
 
 - License text: [`src-tauri/licenses/FFmpeg-LGPL-2.1.txt`](src-tauri/licenses/FFmpeg-LGPL-2.1.txt), installed as `licenses\FFmpeg-LGPL-2.1.txt` next to Glint.
-- Source and exact configure line: [`src-tauri/licenses/FFmpeg-BUILD.txt`](src-tauri/licenses/FFmpeg-BUILD.txt), installed beside it. The source is the release tarball at <https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz>.
+- Source and exact configure line: [`src-tauri/licenses/FFmpeg-BUILD.txt`](src-tauri/licenses/FFmpeg-BUILD.txt), installed beside it. The unmodified source tarball (with FFmpeg's signature), the build script, and the binaries are published together in the [`ffmpeg-9.0.2-glint1` release](https://github.com/Adham-ELtawil/glint/releases/tag/ffmpeg-9.0.2-glint1); the source is also at <https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz>.
 - FFmpeg is a trademark of Fabrice Bellard, originator of the FFmpeg project.
 
 ## Roboto font

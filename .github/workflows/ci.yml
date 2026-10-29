@@ -43,6 +43,11 @@ jobs:
             file \
             wget
 
+      # The Windows FFmpeg build is checked against its SHA-256; this Linux
+      # build only needs placeholders for Tauri's externalBin check.
+      - name: Fetch the bundled FFmpeg
+        run: bash scripts/fetch-ffmpeg.sh --stub-host
+
       - run: npm ci
       - run: npm run lint
       - run: npm run format:check
@@ -77,6 +82,10 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
+
+      - name: Fetch the bundled FFmpeg
+        shell: bash
+        run: bash scripts/fetch-ffmpeg.sh
 
       - run: npm ci
       - run: npm test

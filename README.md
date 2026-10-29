@@ -213,11 +213,14 @@ You only need these to work on the code. People who just use Glint don't.
 ```bash
 git clone https://github.com/Adham-ELtawil/glint.git
 cd glint
+bash scripts/fetch-ffmpeg.sh   # the bundled FFmpeg (add --stub-host on Linux/macOS)
 npm install
 npm run tauri dev
 ```
 
-This starts Vite on `http://127.0.0.1:43123` and opens the Glint window with hot reload.
+`scripts/fetch-ffmpeg.sh` downloads Glint's FFmpeg build from the [`ffmpeg-9.0.2-glint1`](https://github.com/Adham-ELtawil/glint/releases/tag/ffmpeg-9.0.2-glint1) release, checks its SHA-256, and puts it in `src-tauri/binaries/` (not committed). That release also has the FFmpeg source and the build script.
+
+`npm run tauri dev` starts Vite on `http://127.0.0.1:43123` and opens the Glint window with hot reload.
 
 For layout work you can run only the UI in a browser:
 
