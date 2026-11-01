@@ -18,6 +18,8 @@
 
 Free and open source · Windows 10 and 11 · about 5.6 MB
 
+<a href="https://alternativeto.net/software/glint-video-player/about/?utm_source=badge&utm_medium=referral"><img src="docs/alternativeto-badge.svg" width="183" height="59" alt="Glint Video Player | AlternativeTo" /></a>
+
 </div>
 
 Open a video and the same control bar, shortcuts, and animations you already know from YouTube are there. Glint opens to your **Continue watching** list and your video folders, so the thing you were watching is one click away. No setup, no ads, no account, and no telemetry.
