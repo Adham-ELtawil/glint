@@ -156,3 +156,6 @@ details p { margin: 0; padding: 0 20px 18px; color: #c4c4c4; }
   h1, .facts strong { background: none; color: CanvasText; }
   .btn-primary { border: 1px solid ButtonText; }
 }
+
+.alt-badge{display:inline-block;margin:8px 0 4px}
+.alt-badge img{display:block;width:183px;height:59px}
