@@ -963,9 +963,9 @@ video::cue {
   background: #e8e8e8;
 }
 .hints {
-  margin-top: 22px;
+  margin-top: 22px !important;
   font-size: 12px;
-  color: #777;
+  color: #777 !important;
 }
 
 .spinner {
@@ -1132,7 +1132,7 @@ video::cue {
 }
 
 [hidden] {
-  display: none;
+  display: none !important;
 }
 
 .app.is-fullscreen .menubar,
@@ -1710,8 +1710,8 @@ video::cue {
   position: relative;
   width: 88px;
   height: 88px;
-  animation-name: mark-in;
-  animation-duration: 0.6s;
+  animation-name: mark-in !important;
+  animation-duration: 0.6s !important;
 }
 .home-empty-mark::before {
   content: "";
