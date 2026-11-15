@@ -26,6 +26,16 @@ export interface MediaSource {
   fallback?: StreamSource | null;
   /** For HEVC: the video converted to H.264, for PCs that can't decode HEVC. */
   transcode?: StreamSource | null;
+  /** Set when Glint has no decoder for the file's audio or video: nothing can play. */
+  unsupported?: UnsupportedFormat | null;
+  /** A video that plays without sound because Glint can't decode its audio (the codec). */
+  droppedAudio?: string | null;
+}
+
+/** A codec Glint's bundled ffmpeg can't decode (ffmpeg's codec name, e.g. `adpcm_yamaha`). */
+export interface UnsupportedFormat {
+  kind: "audio" | "video";
+  codec: string;
 }
 
 export interface PlaylistItem {

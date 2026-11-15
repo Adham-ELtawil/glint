@@ -12,12 +12,17 @@ so you can replace them with your own build of FFmpeg.
 
 Source (unmodified FFmpeg 9.0.2 release tarball and its signature), the
 build script and these binaries are published together at:
-  https://github.com/Adham-ELtawil/glint/releases/tag/ffmpeg-9.0.2-glint1
+  https://github.com/Adham-ELtawil/glint/releases/tag/ffmpeg-9.0.2-glint2
 Source tarball:
-  https://github.com/Adham-ELtawil/glint/releases/download/ffmpeg-9.0.2-glint1/ffmpeg-9.0.2.tar.xz
+  https://github.com/Adham-ELtawil/glint/releases/download/ffmpeg-9.0.2-glint2/ffmpeg-9.0.2.tar.xz
   (also https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz)
 Toolchain: llvm-mingw 20261020 (x86_64-w64-mingw32-clang), static, UCRT.
 No GPL or nonfree components are enabled.
+
+glint2 (Glint 0.2.1) adds audio decoders used by voice recorders and old
+AVI/WAV files: adpcm_ima_wav, adpcm_g726, adpcm_g726le, pcm_alaw, pcm_mulaw,
+pcm_s32le, pcm_f32le, pcm_f64le, gsm_ms and truespeech. Everything else is
+the same as glint1.
 
 Configure line:
 
@@ -35,7 +40,7 @@ configure --arch=x86_64 --target-os=mingw32 --cross-prefix=x86_64-w64-mingw32- \
   --enable-small \
   --enable-protocol=file,pipe \
   --enable-demuxer=mov,matroska,avi,asf,flv,mpegps,mpegts,mpegvideo,h264,hevc,aac,ac3,eac3,dts,truehd,mp3,wav,ogg,srt,ass,webvtt \
-  --enable-decoder=ac3,eac3,dca,truehd,mlp,mp2,mp3,mp3float,wmav1,wmav2,wmapro,aac,aac_latm,flac,opus,vorbis,pcm_s16le,pcm_s24le,pcm_s16be,pcm_u8,pcm_dvd,pcm_bluray,adpcm_ms,mpeg1video,mpeg2video,mpeg4,msmpeg4v1,msmpeg4v2,msmpeg4v3,wmv1,wmv2,wmv3,vc1,h263,flv,h264,hevc,subrip,srt,ass,ssa,webvtt,mov_text,text \
+  --enable-decoder=ac3,eac3,dca,truehd,mlp,mp2,mp3,mp3float,wmav1,wmav2,wmapro,aac,aac_latm,flac,opus,vorbis,pcm_s16le,pcm_s24le,pcm_s16be,pcm_u8,pcm_dvd,pcm_bluray,adpcm_ms,adpcm_ima_wav,adpcm_g726,adpcm_g726le,pcm_alaw,pcm_mulaw,pcm_s32le,pcm_f32le,pcm_f64le,gsm_ms,truespeech,mpeg1video,mpeg2video,mpeg4,msmpeg4v1,msmpeg4v2,msmpeg4v3,wmv1,wmv2,wmv3,vc1,h263,flv,h264,hevc,subrip,srt,ass,ssa,webvtt,mov_text,text \
   --enable-encoder=aac,flac,webvtt,mpeg4,mjpeg \
   --enable-muxer=mp4,mov,ipod,webvtt,null,matroska,mjpeg,image2pipe \
   --enable-parser=h264,hevc,av1,vp9,vp8,aac,aac_latm,ac3,dca,mlp,mpegaudio,mpegvideo,mpeg4video,vc1,opus,vorbis,flac,h263 \

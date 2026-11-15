@@ -12,6 +12,8 @@ pub struct VideoStream {
     pub width: u32,
     pub height: u32,
     pub interlaced: bool,
+    /// The bundled ffmpeg has a decoder for it (see [`has_decoder`]).
+    pub decodable: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -21,6 +23,8 @@ pub struct AudioStream {
     pub language: Option<String>,
     pub title: Option<String>,
     pub default: bool,
+    /// The bundled ffmpeg has a decoder for it (see [`has_decoder`]).
+    pub decodable: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -61,6 +65,7 @@ struct RawStream {
     codec_type: Option<String>,
     codec_name: Option<String>,
     pix_fmt: Option<String>,
+    sample_fmt: Option<String>,
     width: Option<u32>,
     height: Option<u32>,
     channels: Option<u32>,
@@ -70,6 +75,13 @@ struct RawStream {
     disposition: HashMap<String, i64>,
     #[serde(default)]
     tags: HashMap<String, String>,
+}
+
+/// ffprobe only learns a stream's pixel or sample format by opening its
+/// decoder, so a missing format means Glint's trimmed ffmpeg can't decode it
+/// (an audio codec it wasn't built with, say). Copying the stream still works.
+fn has_decoder(format: Option<&String>) -> bool {
+    format.is_some_and(|f| !f.is_empty() && f != "unknown")
 }
 
 pub fn parse(json: &str) -> Result<Probe, String> {
@@ -122,6 +134,7 @@ pub fn parse(json: &str) -> Result<Probe, String> {
                         width: stream.width.unwrap_or(0),
                         height: stream.height.unwrap_or(0),
                         interlaced: matches!(field.as_str(), "tt" | "bb" | "tb" | "bt"),
+                        decodable: has_decoder(stream.pix_fmt.as_ref()),
                     });
                 }
             }
@@ -131,6 +144,7 @@ pub fn parse(json: &str) -> Result<Probe, String> {
                 language: tag("language"),
                 title: tag("title"),
                 default: stream.disposition.get("default").copied().unwrap_or(0) != 0,
+                decodable: has_decoder(stream.sample_fmt.as_ref()),
             }),
             Some("subtitle") => subtitles.push(SubtitleStream {
                 codec,
@@ -187,7 +201,7 @@ mod tests {
           "streams": [
             {"index":0,"codec_type":"video","codec_name":"mjpeg","disposition":{"attached_pic":1}},
             {"index":1,"codec_type":"video","codec_name":"hevc","pix_fmt":"yuv420p10le","width":1920,"height":1080,"field_order":"progressive","disposition":{"default":1,"attached_pic":0}},
-            {"index":2,"codec_type":"audio","codec_name":"dts","channels":6,"disposition":{"default":1},"tags":{"language":"eng","title":"Surround"}},
+            {"index":2,"codec_type":"audio","codec_name":"dts","sample_fmt":"fltp","channels":6,"disposition":{"default":1},"tags":{"language":"eng","title":"Surround"}},
             {"index":3,"codec_type":"audio","codec_name":"aac","channels":2,"disposition":{"default":0},"tags":{"language":"und"}},
             {"index":4,"codec_type":"subtitle","codec_name":"subrip","tags":{"language":"ara"}}
           ],
@@ -206,6 +220,30 @@ mod tests {
         assert_eq!(probe.audio[0].language.as_deref(), Some("eng"));
         assert_eq!(probe.audio[1].language, None);
         assert_eq!(probe.subtitles[0].language.as_deref(), Some("ara"));
+        assert!(probe.audio[0].decodable);
+        assert!(!probe.audio[1].decodable);
+    }
+
+    #[test]
+    fn a_stream_without_a_decoder_has_no_format() {
+        // ffprobe from the trimmed build on an AVI with Yamaha ADPCM audio.
+        let json = r#"{
+          "streams": [
+            {"index":0,"codec_type":"audio","codec_name":"adpcm_yamaha","channels":1},
+            {"index":1,"codec_type":"audio","codec_name":"pcm_alaw","sample_fmt":"s16","channels":1},
+            {"index":2,"codec_type":"audio","codec_name":"x","sample_fmt":"unknown","channels":1}
+          ],
+          "format": {"format_name":"avi","duration":"4.0"}
+        }"#;
+        let probe = parse(json).unwrap();
+        assert!(!probe.audio[0].decodable);
+        assert!(probe.audio[1].decodable);
+        assert!(!probe.audio[2].decodable);
+        let video = parse(r#"{"streams":[{"codec_type":"video","codec_name":"h264","pix_fmt":"yuv420p"}]}"#)
+            .unwrap()
+            .video
+            .unwrap();
+        assert!(video.decodable);
     }
 
     #[test]

@@ -1,7 +1,7 @@
 import type { OpenedMedia, PlaylistItem, StreamSource } from "../model/media";
 import type { PlaybackBackend, SubtitleCueTrack } from "./backend";
 import { chapterAt, parseChapters, type Chapter } from "./chapters";
-import { describeMediaError } from "./errors";
+import { describeMediaError, describeUnsupported, droppedAudioNote } from "./errors";
 import { clampRate, formatRate, stepRate } from "./rates";
 import { createResumeStore, resumePosition, type ResumeStore } from "./resume-store";
 import type { ShortcutAction } from "./shortcuts";
@@ -100,7 +100,9 @@ export class PlayerController {
     this.clearPictureCheck();
     const generation = ++this.generation;
     this.media = media;
-    this.convertNote = convertNoteFor(media.source.stream);
+    this.convertNote = media.source.droppedAudio
+      ? droppedAudioNote(media.source.droppedAudio)
+      : convertNoteFor(media.source.stream);
     this.resumeLabel = null;
     this.errorTitle = null;
     this.errorBody = null;
@@ -120,6 +122,15 @@ export class PlayerController {
     this.backend.setVolume(volume);
     this.backend.setMuted(muted);
     this.backend.setRate(rate);
+
+    // Glint has no decoder for this file: say so plainly instead of trying.
+    if (media.source.unsupported) {
+      const copy = describeUnsupported(media.source.filename, media.source.unsupported);
+      this.backend.pause();
+      this.forcedError = true;
+      this.publishError(copy.title, copy.body);
+      return;
+    }
 
     try {
       await this.backend.load(media.source);

@@ -246,6 +246,52 @@ describe("PlayerController", () => {
     expect(sink.state?.errorTitle).toBe("This file can't be played");
     expect(sink.state?.errorBody).toContain("film.mkv");
   });
+
+  it("says the audio format isn't supported without trying to play it", async () => {
+    const backend = new FakeBackend();
+    const sink = new RecordingSink();
+    const player = new PlayerController(backend, createResumeStore(memoryStorage()), sink);
+    await player.open(media("/rec/memo.avi"));
+    await player.open(
+      media("/rec/voice.avi", {
+        source: {
+          id: "/rec/voice.avi",
+          path: "/rec/voice.avi",
+          url: "http://127.0.0.1/voice",
+          filename: "voice.avi",
+          extension: "avi",
+          unsupported: { kind: "audio", codec: "adpcm_yamaha" },
+        },
+      }),
+    );
+    expect(backend.loaded.map((s) => s.id)).toEqual(["/rec/memo.avi"]);
+    expect(sink.state?.phase).toBe("error");
+    expect(sink.state?.errorTitle).toBe("This audio format isn't supported");
+    expect(sink.state?.errorBody).toContain("voice.avi uses Yamaha ADPCM audio");
+    expect(sink.state?.playing).toBe(false);
+  });
+
+  it("notes when a video plays without its unsupported audio", async () => {
+    const backend = new FakeBackend();
+    const sink = new RecordingSink();
+    const player = new PlayerController(backend, createResumeStore(memoryStorage()), sink);
+    await player.open(
+      media("/v/old.avi", {
+        source: {
+          id: "/v/old.avi",
+          path: "/v/old.avi",
+          url: "http://127.0.0.1/old",
+          filename: "old.avi",
+          extension: "avi",
+          droppedAudio: "truespeech",
+        },
+      }),
+    );
+    expect(sink.state?.phase).toBe("ready");
+    expect(sink.state?.convertNote).toBe(
+      "TrueSpeech audio isn't supported \u2014 playing without sound",
+    );
+  });
 });
 
 describe("held-Space 2x boost", () => {

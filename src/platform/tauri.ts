@@ -10,7 +10,13 @@ import type {
   LibraryFolder,
   MediaInfo,
 } from "../home/library";
-import type { OpenedMedia, PlaylistItem, StreamSource, SubtitleFile } from "../model/media";
+import type {
+  OpenedMedia,
+  PlaylistItem,
+  StreamSource,
+  SubtitleFile,
+  UnsupportedFormat,
+} from "../model/media";
 import type { DownloadEvent, UpdateInfo, UpdaterApi } from "../update/model";
 import { VIDEO_EXTENSIONS } from "../player/playlist";
 
@@ -32,6 +38,8 @@ interface PlaybackDto {
   stream: StreamSource | null;
   fallback: StreamSource | null;
   transcode?: StreamSource | null;
+  unsupported?: UnsupportedFormat | null;
+  droppedAudio?: string | null;
 }
 
 interface PlaylistDto {
@@ -195,6 +203,8 @@ function fromDto(dto: OpenedDto): OpenedMedia {
       stream: dto.playback?.stream ?? null,
       fallback: dto.playback?.fallback ?? null,
       transcode: dto.playback?.transcode ?? null,
+      unsupported: dto.playback?.unsupported ?? null,
+      droppedAudio: dto.playback?.droppedAudio ?? null,
     },
     playlist,
     subtitles: dto.subtitles.map((file) => ({

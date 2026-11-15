@@ -8,7 +8,9 @@ use serde::Serialize;
 
 use crate::ffmpeg::Tools;
 use crate::ffmpeg::args::{TIMESTAMP_PAD, thumbnail_args};
-use crate::ffmpeg::plan::{Mode, Plan, VideoAction, plan, transcode};
+use crate::ffmpeg::plan::{
+    Mode, Plan, Unsupported, VideoAction, dropped_audio, plan, transcode, unsupported,
+};
 use crate::ffmpeg::probe::{self, Probe};
 use crate::ffmpeg::process;
 use crate::media_server::MediaServer;
@@ -40,6 +42,36 @@ pub struct PlaybackDto {
     /// For HEVC: the same file with the video converted to H.264, for PCs
     /// that can't decode HEVC.
     pub transcode: Option<StreamDto>,
+    /// Set when Glint can't decode the file at all; the player says so
+    /// instead of trying (and failing with a generic error).
+    pub unsupported: Option<UnsupportedDto>,
+    /// A video whose audio Glint can't decode plays silently; this is the
+    /// codec it left out.
+    pub dropped_audio: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct UnsupportedDto {
+    /// `audio` or `video`.
+    pub kind: String,
+    /// ffmpeg's codec name, e.g. `adpcm_yamaha`.
+    pub codec: String,
+}
+
+impl From<Unsupported> for UnsupportedDto {
+    fn from(value: Unsupported) -> Self {
+        match value {
+            Unsupported::Audio { codec } => Self {
+                kind: "audio".into(),
+                codec,
+            },
+            Unsupported::Video { codec } => Self {
+                kind: "video".into(),
+                codec,
+            },
+        }
+    }
 }
 
 impl PlaybackDto {
@@ -49,6 +81,8 @@ impl PlaybackDto {
             stream: None,
             fallback: None,
             transcode: None,
+            unsupported: None,
+            dropped_audio: None,
         }
     }
 }
@@ -84,6 +118,18 @@ pub fn decide(media: &MediaServer, tools: &Tools, path: &Path) -> PlaybackDto {
             stream: None,
             fallback: stream_dto(media, path, &probe, plan(&probe, true)),
             transcode,
+            unsupported: None,
+            dropped_audio: None,
+        };
+    }
+    if let Some(reason) = unsupported(&probe, &chosen) {
+        return PlaybackDto {
+            mode: chosen.mode.as_str().into(),
+            stream: None,
+            fallback: None,
+            transcode: None,
+            unsupported: Some(reason.into()),
+            dropped_audio: None,
         };
     }
     match stream_dto(media, path, &probe, chosen) {
@@ -92,6 +138,8 @@ pub fn decide(media: &MediaServer, tools: &Tools, path: &Path) -> PlaybackDto {
             stream: Some(stream),
             fallback: None,
             transcode,
+            unsupported: None,
+            dropped_audio: dropped_audio(&probe, &chosen),
         },
         None => PlaybackDto::native(),
     }
@@ -150,6 +198,23 @@ pub fn grab_frame(tools: &Tools, path: &Path) -> Result<FrameDto, String> {
 #[cfg(test)]
 mod tests {
     use super::frame_time;
+
+    #[test]
+    fn unsupported_is_camel_case_for_the_player() {
+        use super::{PlaybackDto, UnsupportedDto};
+        use crate::ffmpeg::plan::Unsupported;
+        let mut dto = PlaybackDto::native();
+        dto.unsupported = Some(UnsupportedDto::from(Unsupported::Audio {
+            codec: "adpcm_yamaha".into(),
+        }));
+        dto.dropped_audio = Some("x".into());
+        let json = serde_json::to_value(dto).unwrap();
+        assert_eq!(
+            json["unsupported"],
+            serde_json::json!({ "kind": "audio", "codec": "adpcm_yamaha" })
+        );
+        assert_eq!(json["droppedAudio"], "x");
+    }
 
     #[test]
     fn frame_time_matches_the_webview_grabber() {

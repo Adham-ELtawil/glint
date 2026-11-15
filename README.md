@@ -220,7 +220,7 @@ npm install
 npm run tauri dev
 ```
 
-`scripts/fetch-ffmpeg.sh` downloads Glint's FFmpeg build from the [`ffmpeg-9.0.2-glint1`](https://github.com/Adham-ELtawil/glint/releases/tag/ffmpeg-9.0.2-glint1) release, checks its SHA-256, and puts it in `src-tauri/binaries/` (not committed). That release also has the FFmpeg source and the build script.
+`scripts/fetch-ffmpeg.sh` downloads Glint's FFmpeg build from the [`ffmpeg-9.0.2-glint2`](https://github.com/Adham-ELtawil/glint/releases/tag/ffmpeg-9.0.2-glint2) release, checks its SHA-256, and puts it in `src-tauri/binaries/` (not committed). That release also has the FFmpeg source and the build script.
 
 `npm run tauri dev` starts Vite on `http://127.0.0.1:43123` and opens the Glint window with hot reload.
 

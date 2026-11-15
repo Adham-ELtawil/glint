@@ -3,7 +3,7 @@
 # `bundle.externalBin` expects them: src-tauri/binaries/<name>-<target>.exe.
 #
 # The binaries, their source tarball and build script are published as the
-# `ffmpeg-9.0.2-glint1` release of this repository (see
+# `ffmpeg-9.0.2-glint2` release of this repository (see
 # src-tauri/licenses/FFmpeg-BUILD.txt). Every download is checked against the
 # SHA-256 sums below, so a changed asset fails the build.
 #
@@ -13,11 +13,11 @@
 #                                       which only need the files to exist
 set -euo pipefail
 
-TAG="ffmpeg-9.0.2-glint1"
-ZIP="glint-ffmpeg-9.0.2-glint1-win64.zip"
-ZIP_SHA256="e04beb8d5645265911a283608c6db4981ea8f932ecc878f69cc69379d3bdb60f"
-FFMPEG_SHA256="a6fe35784aaeee2cfd31186c9792bfe91536a258247900a88fe9fc27838889b5"
-FFPROBE_SHA256="4e1ad6a8876d665aa41ac0c1031f8b3bdc32e2ff29a0d98b11d7b91318e5c80c"
+TAG="ffmpeg-9.0.2-glint2"
+ZIP="glint-ffmpeg-9.0.2-glint2-win64.zip"
+ZIP_SHA256="2cdfd176bef97ade813b5400ef2783557938191e99702261488d19cbdee27b11"
+FFMPEG_SHA256="97ae5a1ea943d282b2a2bd8881f9da7f4cd0c6eda1e9cb1750e3daf82cf1c017"
+FFPROBE_SHA256="0c00db541608af9a66d7d845990d3a3dec12a21f495fd117d6f413c37d2ea868"
 URL="https://github.com/Adham-ELtawil/glint/releases/download/${TAG}/${ZIP}"
 TRIPLE="x86_64-pc-windows-msvc"
 

@@ -79,7 +79,14 @@ pub fn session_args(path: &Path, plan: &Plan, start: f64, encoder: &str) -> Vec<
                     _ => ("stereo", "192k"),
                 };
                 args.extend(["-c:a", "aac", "-b:a", bitrate, "-af"].map(String::from));
-                args.push(format!("aformat=channel_layouts={layout}"));
+                let mut filter = format!("aformat=channel_layouts={layout}");
+                if matches!(plan.video, VideoAction::None) {
+                    // Audio-only files (voice recorder AVIs/WAVs) can carry
+                    // broken or gappy timestamps; count them from the samples
+                    // instead, starting where the session starts.
+                    filter.push_str(",asetpts=N/SR/TB+STARTPTS");
+                }
+                args.push(filter);
             }
         }
     }
@@ -212,6 +219,24 @@ mod tests {
         let args = session_args(Path::new("a.ts"), &plan, 0.0, "x");
         assert!(args.contains(&"-vn".to_string()));
         assert!(args.contains(&"-an".to_string()));
+    }
+
+    #[test]
+    fn audio_only_files_get_sample_based_timestamps() {
+        let plan = Plan {
+            mode: Mode::Remux,
+            video: VideoAction::None,
+            audio: Some(AudioAction {
+                stream: 0,
+                copy: false,
+                channels: 1,
+            }),
+        };
+        let line = joined(&session_args(Path::new("/r/rec.avi"), &plan, 2.0, "x"));
+        assert!(line.contains("-ss 2.000 -copyts -i /r/rec.avi -vn -map 0:a:0"));
+        assert!(line.contains(
+            "-c:a aac -b:a 96k -af aformat=channel_layouts=mono,asetpts=N/SR/TB+STARTPTS"
+        ));
     }
 
     #[test]

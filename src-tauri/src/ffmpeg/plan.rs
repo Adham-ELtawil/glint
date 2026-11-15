@@ -90,6 +90,65 @@ fn output_channels(input: u32) -> u32 {
     }
 }
 
+/// Whether ffmpeg can produce this stream's audio: AAC is copied untouched,
+/// anything else has to be decoded by the bundled build.
+fn audio_usable(audio: &super::probe::AudioStream) -> bool {
+    audio_copyable(audio) || audio.decodable
+}
+
+fn audio_copyable(audio: &super::probe::AudioStream) -> bool {
+    audio.codec == "aac" && audio.channels <= 2
+}
+
+/// The audio stream ffmpeg plays: the default one if Glint can decode it,
+/// else the first one it can. None when no audio track is usable.
+pub fn playable_audio(probe: &Probe) -> Option<usize> {
+    let preferred = default_audio(probe)?;
+    if audio_usable(&probe.audio[preferred]) {
+        return Some(preferred);
+    }
+    probe.audio.iter().position(audio_usable)
+}
+
+/// A stream Glint's ffmpeg has no decoder for.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Unsupported {
+    /// An audio-only file whose audio can't be decoded: nothing to play.
+    Audio { codec: String },
+    /// Video that has to be converted but can't be decoded.
+    Video { codec: String },
+}
+
+/// Why an ffmpeg `plan` can't play the file at all, if it can't.
+pub fn unsupported(probe: &Probe, plan: &Plan) -> Option<Unsupported> {
+    if plan.mode == Mode::Native {
+        return None;
+    }
+    if let (VideoAction::Encode { .. }, Some(video)) = (plan.video, probe.video.as_ref())
+        && !video.decodable
+    {
+        return Some(Unsupported::Video {
+            codec: video.codec.clone(),
+        });
+    }
+    if plan.video == VideoAction::None && plan.audio.is_none() {
+        let index = default_audio(probe)?;
+        return Some(Unsupported::Audio {
+            codec: probe.audio[index].codec.clone(),
+        });
+    }
+    None
+}
+
+/// A video whose audio Glint can't decode plays without sound; this is the
+/// codec it had to leave out, so the player can say so.
+pub fn dropped_audio(probe: &Probe, plan: &Plan) -> Option<String> {
+    if plan.mode == Mode::Native || plan.video == VideoAction::None || plan.audio.is_some() {
+        return None;
+    }
+    default_audio(probe).map(|index| probe.audio[index].codec.clone())
+}
+
 /// `force_remux` builds the ffmpeg plan for a file that should have played
 /// natively but didn't (the player's fallback).
 pub fn plan(probe: &Probe, force_remux: bool) -> Plan {
@@ -117,11 +176,11 @@ pub fn plan(probe: &Probe, force_remux: bool) -> Plan {
             deinterlace: v.interlaced,
         },
     };
-    let audio = audio_index.map(|stream| {
+    let audio = playable_audio(probe).map(|stream| {
         let a = &probe.audio[stream];
         AudioAction {
             stream,
-            copy: a.codec == "aac" && a.channels <= 2,
+            copy: audio_copyable(a),
             channels: output_channels(a.channels),
         }
     });
@@ -166,6 +225,7 @@ mod tests {
                 width: 1280,
                 height: 720,
                 interlaced: false,
+                decodable: true,
             }),
             audio: audio
                 .iter()
@@ -175,6 +235,7 @@ mod tests {
                     language: None,
                     title: None,
                     default: false,
+                    decodable: true,
                 })
                 .collect(),
             subtitles: vec![],
@@ -296,6 +357,66 @@ mod tests {
         p.audio[1].default = true;
         assert_eq!(default_audio(&p), Some(1));
         assert_eq!(plan(&p, false).mode, Mode::Audio);
+    }
+
+    #[test]
+    fn audio_glint_cant_decode() {
+        // Voice-recorder AVI with an audio codec the trimmed build lacks.
+        let mut rec = probe("avi", None, &[("adpcm_yamaha", 1)]);
+        rec.audio[0].decodable = false;
+        let p = plan(&rec, false);
+        assert_eq!(p.audio, None);
+        assert_eq!(
+            unsupported(&rec, &p),
+            Some(Unsupported::Audio {
+                codec: "adpcm_yamaha".into()
+            })
+        );
+        assert_eq!(dropped_audio(&rec, &p), None);
+
+        // A decodable recording plays.
+        let ok = probe("avi", None, &[("adpcm_ima_wav", 1)]);
+        let p = plan(&ok, false);
+        assert_eq!(p.audio.unwrap().stream, 0);
+        assert_eq!(unsupported(&ok, &p), None);
+
+        // A video keeps playing, without sound, and says which codec it dropped.
+        let mut movie = probe("avi", Some(("h264", "yuv420p")), &[("adpcm_yamaha", 2)]);
+        movie.audio[0].decodable = false;
+        let p = plan(&movie, false);
+        assert_eq!(p.audio, None);
+        assert_eq!(unsupported(&movie, &p), None);
+        assert_eq!(dropped_audio(&movie, &p).as_deref(), Some("adpcm_yamaha"));
+
+        // Another track that can be decoded is used instead.
+        let mut two = probe(MKV, Some(("h264", "yuv420p")), &[("x", 2), ("ac3", 6)]);
+        two.audio[0].decodable = false;
+        two.audio[0].default = true;
+        let p = plan(&two, false);
+        assert_eq!(p.audio.unwrap().stream, 1);
+        assert_eq!(dropped_audio(&two, &p), None);
+
+        // AAC is copied, so it needs no decoder.
+        let mut aac = probe("flv", Some(("h264", "yuv420p")), &[("aac", 2)]);
+        aac.audio[0].decodable = false;
+        assert!(plan(&aac, false).audio.unwrap().copy);
+    }
+
+    #[test]
+    fn video_glint_cant_decode() {
+        let mut p = probe("avi", Some(("cinepak", "")), &[("pcm_s16le", 2)]);
+        p.video.as_mut().unwrap().decodable = false;
+        let chosen = plan(&p, false);
+        assert_eq!(
+            unsupported(&p, &chosen),
+            Some(Unsupported::Video {
+                codec: "cinepak".into()
+            })
+        );
+        // Native files are the webview's business.
+        let mut native = probe(MP4, Some(("h264", "yuv420p")), &[("aac", 2)]);
+        native.video.as_mut().unwrap().decodable = false;
+        assert_eq!(unsupported(&native, &plan(&native, false)), None);
     }
 
     #[test]
