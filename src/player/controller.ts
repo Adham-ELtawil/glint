@@ -494,7 +494,8 @@ export class PlayerController {
       ? this.tracks.find((item) => item.id === this.activeTrackId)
       : undefined;
     if (!track) {
-      this.sink.onFlash({ kind: "subtitle", label: "No subtitles" });
+      const label = this.tracks.length > 0 ? "Captions are off" : "No subtitles";
+      this.sink.onFlash({ kind: "subtitle", label });
       return;
     }
     this.subtitleDelay = clampSubtitleDelay(this.subtitleDelay + delta);

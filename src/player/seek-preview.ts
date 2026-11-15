@@ -258,14 +258,23 @@ export class SeekPreview {
         this.failed = true;
         finish(null);
       };
+      const seek = () => {
+        video.removeEventListener("loadedmetadata", seek);
+        try {
+          video.currentTime = at;
+        } catch {
+          finish(null);
+        }
+      };
       video.addEventListener("seeked", onSeeked);
       video.addEventListener("error", onError);
-      timer = this.setTimer(() => finish(null), SEEK_TIMEOUT_MS);
-      try {
-        video.currentTime = at;
-      } catch {
+      timer = this.setTimer(() => {
+        video.removeEventListener("loadedmetadata", seek);
         finish(null);
-      }
+      }, SEEK_TIMEOUT_MS);
+      // Seeking before the metadata is in would never fire `seeked`.
+      if (video.readyState >= 1) seek();
+      else video.addEventListener("loadedmetadata", seek);
     });
   }
 

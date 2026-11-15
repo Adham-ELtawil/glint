@@ -339,6 +339,14 @@ describe("subtitle delay", () => {
     player.handleShortcut({ type: "subtitle-delay", delta: 0.1 });
     expect(sink.flashes.at(-1)).toEqual({ kind: "subtitle", label: "No subtitles" });
     expect(sink.state?.subtitleDelay).toBe(0);
+    await player.open(
+      media("/videos/off.mp4", {
+        subtitles: [{ id: "s", label: "s", format: "vtt", content: "WEBVTT\n" }],
+      }),
+    );
+    player.toggleCaptions();
+    player.handleShortcut({ type: "subtitle-delay", delta: 0.1 });
+    expect(sink.flashes.at(-1)).toEqual({ kind: "subtitle", label: "Captions are off" });
   });
 });
 
