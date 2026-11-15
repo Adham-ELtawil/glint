@@ -1,11 +1,14 @@
 import { clamp01 } from "./time";
 import { clampRate, type PlaybackRate } from "./rates";
+import { clampSubtitleDelay } from "./subtitles";
 
 export interface StoredFile {
   position: number;
   volume: number;
   muted: boolean;
   rate: PlaybackRate;
+  /** Subtitle delay in seconds, when it isn't 0. */
+  subtitleDelay?: number;
   updatedAt: number;
 }
 
@@ -107,6 +110,9 @@ export function createResumeStore(storage: ResumeStorage, key = RESUME_STORAGE_K
         next.rate = clampRate(patch.rate);
         prefs = { ...prefs, rate: next.rate };
       }
+      // Per file only: a delay fits one subtitle file, not the next video.
+      const delay = clampSubtitleDelay(patch.subtitleDelay ?? previous?.subtitleDelay ?? 0);
+      if (delay !== 0) next.subtitleDelay = delay;
       const files = prune({ ...prefs.files, [id]: next }, MAX_FILES);
       prefs = { ...prefs, files };
       save();
@@ -194,13 +200,17 @@ function sanitizeFile(value: unknown): StoredFile | null {
   if (!value || typeof value !== "object") return null;
   const record = value as Partial<StoredFile>;
   if (typeof record.position !== "number" || !Number.isFinite(record.position)) return null;
-  return {
+  const file: StoredFile = {
     position: Math.max(0, record.position),
     volume: typeof record.volume === "number" ? clamp01(record.volume) : 1,
     muted: Boolean(record.muted),
     rate: typeof record.rate === "number" ? clampRate(record.rate) : 1,
     updatedAt: typeof record.updatedAt === "number" ? record.updatedAt : 0,
   };
+  const delay =
+    typeof record.subtitleDelay === "number" ? clampSubtitleDelay(record.subtitleDelay) : 0;
+  if (delay !== 0) file.subtitleDelay = delay;
+  return file;
 }
 
 function prune(files: Record<string, StoredFile>, max: number): Record<string, StoredFile> {

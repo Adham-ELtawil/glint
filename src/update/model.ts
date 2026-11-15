@@ -39,12 +39,14 @@ export interface UpdaterApi {
 export type UpdateState =
   | { kind: "idle" }
   | { kind: "checking" }
-  | { kind: "available"; version: string }
+  | { kind: "available"; version: string; currentVersion: string; notes: string | null }
   | { kind: "downloading"; version: string; received: number; total: number | null }
   | { kind: "installing"; version: string }
   | { kind: "current"; version: string }
   | { kind: "failed"; step: "check"; version: null; reason: CheckFailure }
-  | { kind: "failed"; step: "install"; version: string };
+  | { kind: "failed"; step: "install"; version: string }
+  /** "What's new", shown once after Glint was updated. */
+  | { kind: "updated"; version: string; notes: string };
 
 /** True while the download or installer is running; nothing else may start. */
 export function isBusy(state: UpdateState): boolean {

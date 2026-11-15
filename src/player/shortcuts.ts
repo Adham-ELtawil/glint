@@ -1,3 +1,5 @@
+import { SUBTITLE_DELAY_STEP } from "./subtitles";
+
 export type ShortcutAction =
   | { type: "toggle-play" }
   | { type: "seek"; delta: number }
@@ -11,6 +13,8 @@ export type ShortcutAction =
   | { type: "toggle-theater" }
   | { type: "cycle-rate"; direction: -1 | 1 }
   | { type: "next" }
+  /** Move subtitles earlier (negative) or later, in seconds. */
+  | { type: "subtitle-delay"; delta: number }
   | { type: "escape" };
 
 export interface KeyInput {
@@ -59,6 +63,9 @@ export function mapShortcut(input: KeyInput): ShortcutAction | null {
   if (lower === "t") return finish(input, { type: "toggle-theater" });
   if (key === "Home") return finish(input, { type: "seek-start" });
   if (key === "End") return finish(input, { type: "seek-end" });
+  // VLC's keys; YouTube uses neither.
+  if (lower === "g") return finish(input, { type: "subtitle-delay", delta: -SUBTITLE_DELAY_STEP });
+  if (lower === "h") return finish(input, { type: "subtitle-delay", delta: SUBTITLE_DELAY_STEP });
 
   if (/^[0-9]$/.test(key)) {
     return finish(input, { type: "seek-ratio", ratio: Number(key) / 10 });
@@ -76,6 +83,7 @@ function allowsRepeat(action: ShortcutAction): boolean {
   return (
     action.type === "seek" ||
     action.type === "volume" ||
+    action.type === "subtitle-delay" ||
     action.type === "seek-start" ||
     action.type === "seek-end"
   );

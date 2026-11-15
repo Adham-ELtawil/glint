@@ -1,7 +1,9 @@
+import type { MediaSource } from "../model/media";
 import { chapterAt } from "../player/chapters";
 import { PLAYBACK_RATES, formatRate } from "../player/rates";
 import { isTypingTarget, mapShortcut, type ShortcutAction } from "../player/shortcuts";
 import type { FlashEffect, PlayerState } from "../player/state";
+import { SeekPreview } from "../player/seek-preview";
 import { formatPair, formatTime } from "../player/time";
 import { APP_VERSION } from "../version";
 import { brandMark, brandMarkLarge, icon, playPauseIcon, type IconName } from "./icons";
@@ -101,6 +103,9 @@ export class PlayerView {
   private tooltip!: HTMLElement;
   private tooltipChapter!: HTMLElement;
   private tooltipTime!: HTMLElement;
+  private tooltipPreview!: HTMLElement;
+  private tooltipImage!: HTMLImageElement;
+  private readonly preview = new SeekPreview({ onFrame: (url) => this.showPreviewFrame(url) });
   private gradient!: HTMLElement;
   private controls!: HTMLElement;
   private feedback!: HTMLElement;
@@ -289,7 +294,9 @@ export class PlayerView {
             ? "volume"
             : effect.kind === "rate"
               ? "settings"
-              : "play";
+              : effect.kind === "subtitle"
+                ? "captions"
+                : "play";
     const label = effect.kind === "play" ? "" : effect.kind === "pause" ? "" : effect.label;
     this.feedback.dataset.side =
       effect.kind === "seek" ? (effect.direction < 0 ? "back" : "forward") : "center";
@@ -544,7 +551,14 @@ export class PlayerView {
     this.tooltip.hidden = true;
     this.tooltipChapter = el("span", "tooltip-chapter");
     this.tooltipTime = el("span", "tooltip-time");
-    this.tooltip.append(this.tooltipChapter, this.tooltipTime);
+    // Column-reverse: the frame (last) sits on top, the time under it.
+    this.tooltipPreview = el("div", "tooltip-preview");
+    this.tooltipImage = document.createElement("img");
+    this.tooltipImage.alt = "";
+    this.tooltipImage.decoding = "async";
+    this.tooltipImage.hidden = true;
+    this.tooltipPreview.append(this.tooltipImage);
+    this.tooltip.append(this.tooltipChapter, this.tooltipTime, this.tooltipPreview);
     this.track = el("div", "progress-track");
     this.handle = el("div", "handle");
     this.track.append(this.handle);
@@ -666,7 +680,7 @@ export class PlayerView {
     this.progress.addEventListener("pointerup", (event) => this.onScrubEnd(event));
     this.progress.addEventListener("pointerleave", () => {
       if (!this.scrubbing) this.setHoverSegment(null);
-      if (!this.scrubbing) this.tooltip.hidden = true;
+      if (!this.scrubbing) this.hideTooltip();
     });
 
     for (const name of ["file", "playback", "view", "help"] as const) {
@@ -913,7 +927,8 @@ export class PlayerView {
       event.clientX <= rect.right &&
       event.clientY >= rect.top &&
       event.clientY <= rect.bottom;
-    this.tooltip.hidden = !inside;
+    if (inside) this.tooltip.hidden = false;
+    else this.hideTooltip();
     if (!inside) this.setHoverSegment(null);
   }
 
@@ -932,11 +947,41 @@ export class PlayerView {
     this.tooltipTime.textContent = formatTime(time, this.state.duration >= 3600);
     this.tooltipChapter.textContent = chapter?.title ?? "";
     this.tooltipChapter.hidden = !chapter;
+    const previewing = this.preview.available;
+    this.tooltip.classList.toggle("has-preview", previewing);
+    if (previewing) this.preview.request(time, this.state.duration);
     this.tooltip.hidden = false;
     const width = this.tooltip.offsetWidth || 48;
     const x = ratio * rect.width;
     const clamped = Math.min(rect.width - width / 2 - 8, Math.max(width / 2 + 8, x));
     this.tooltip.style.left = `${clamped}px`;
+  }
+
+  /**
+   * Which file the seek-bar preview shows frames from; null turns previews
+   * off (the tooltip shows only the time).
+   */
+  setPreviewSource(source: MediaSource | null): void {
+    this.preview.setSource(source);
+    this.tooltipImage.hidden = true;
+    this.tooltipImage.removeAttribute("src");
+    this.tooltip.classList.toggle("has-preview", this.preview.available);
+  }
+
+  private showPreviewFrame(url: string | null): void {
+    if (!url) {
+      this.tooltipImage.hidden = true;
+      this.tooltipImage.removeAttribute("src");
+      this.tooltip.classList.toggle("has-preview", this.preview.available);
+      return;
+    }
+    if (this.tooltipImage.getAttribute("src") !== url) this.tooltipImage.src = url;
+    this.tooltipImage.hidden = false;
+  }
+
+  private hideTooltip(): void {
+    this.tooltip.hidden = true;
+    this.preview.cancel();
   }
 
   private ratioFromEvent(event: PointerEvent): number {

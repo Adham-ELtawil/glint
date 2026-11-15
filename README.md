@@ -127,6 +127,7 @@ The **right-click menu** on the video has Open, Open subtitle, Play/Pause, and F
 | Home / End            | Jump to the start / end           |
 | `<` / `>` (Shift+,/.) | Slower / faster                   |
 | C                     | Captions on / off                 |
+| G / H                 | Subtitles 0.1 s earlier / later   |
 | F or double-click     | Fullscreen                        |
 | T                     | Theater mode                      |
 | Shift+N               | Next video in the folder          |

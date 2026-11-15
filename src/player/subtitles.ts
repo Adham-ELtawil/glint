@@ -68,3 +68,72 @@ export function subtitleFormat(filename: string): "srt" | "vtt" | null {
   if (base.endsWith(".vtt")) return "vtt";
   return null;
 }
+
+/** Subtitle delay limits and step, in seconds (G / H, like VLC). */
+export const SUBTITLE_DELAY_STEP = 0.1;
+export const SUBTITLE_DELAY_MAX = 60;
+
+/** Keeps a delay on the 0.1 s grid and within range, so repeated steps don't drift. */
+export function clampSubtitleDelay(seconds: number): number {
+  if (!Number.isFinite(seconds)) return 0;
+  const limited = Math.min(SUBTITLE_DELAY_MAX, Math.max(-SUBTITLE_DELAY_MAX, seconds));
+  const rounded = Math.round(limited * 10) / 10;
+  return Object.is(rounded, -0) ? 0 : rounded;
+}
+
+/** "+0.3 s", "\u22120.5 s", "0 s": the label shown on screen. */
+export function formatSubtitleDelay(seconds: number): string {
+  const value = clampSubtitleDelay(seconds);
+  if (value === 0) return "0 s";
+  const sign = value > 0 ? "+" : "\u2212";
+  return `${sign}${Math.abs(value).toFixed(1)} s`;
+}
+
+const CUE_TIMING =
+  /^(\s*)((?:\d+:)?\d{1,2}:\d{2}\.\d{3})(\s+-->\s+)((?:\d+:)?\d{1,2}:\d{2}\.\d{3})(.*)$/;
+
+function parseStamp(stamp: string): number {
+  const parts = stamp.split(":");
+  const seconds = Number(parts.pop());
+  const minutes = Number(parts.pop() ?? 0);
+  const hours = Number(parts.pop() ?? 0);
+  return hours * 3600 + minutes * 60 + seconds;
+}
+
+function formatStamp(total: number): string {
+  const ms = Math.max(0, Math.round(total * 1000));
+  const hours = Math.floor(ms / 3_600_000);
+  const minutes = Math.floor((ms % 3_600_000) / 60_000);
+  const seconds = Math.floor((ms % 60_000) / 1000);
+  const millis = ms % 1000;
+  const pad = (n: number, width = 2) => String(n).padStart(width, "0");
+  return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}.${pad(millis, 3)}`;
+}
+
+/**
+ * Moves every cue in a WebVTT document by `offset` seconds (positive = later).
+ * Cues that would end before 0 are dropped; ones that would start before 0
+ * start at 0. Header, NOTE and STYLE blocks and cue settings are kept.
+ */
+export function shiftVtt(vtt: string, offset: number): string {
+  const delta = clampSubtitleDelay(offset);
+  if (delta === 0) return vtt;
+  const blocks = vtt.replace(/\r\n?/g, "\n").split(/\n{2,}/);
+  const kept: string[] = [];
+  for (const block of blocks) {
+    const lines = block.split("\n");
+    const index = lines.findIndex((line) => CUE_TIMING.test(line));
+    if (index < 0 || /^(NOTE|STYLE|REGION)\b/.test(lines[0])) {
+      kept.push(block);
+      continue;
+    }
+    const match = lines[index].match(CUE_TIMING)!;
+    const start = parseStamp(match[2]) + delta;
+    const end = parseStamp(match[4]) + delta;
+    if (end <= 0) continue;
+    lines[index] =
+      `${match[1]}${formatStamp(Math.max(0, start))}${match[3]}${formatStamp(end)}${match[5]}`;
+    kept.push(lines.join("\n"));
+  }
+  return kept.join("\n\n");
+}

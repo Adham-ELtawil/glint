@@ -294,6 +294,54 @@ describe("PlayerController", () => {
   });
 });
 
+describe("subtitle delay", () => {
+  const subtitle = {
+    id: "/videos/s.srt",
+    label: "s.srt",
+    format: "srt" as const,
+    content: "1\n00:00:05,000 --> 00:00:06,000\nHello\n",
+  };
+
+  it("shifts the active track, flashes the delay, and remembers it per file", async () => {
+    const backend = new FakeBackend();
+    const store = createResumeStore(memoryStorage());
+    const sink = new RecordingSink();
+    const player = new PlayerController(backend, store, sink);
+    await player.open(media("/videos/s.mp4", { subtitles: [subtitle] }));
+    expect(backend.subtitles).toContain("00:00:05.000 --> 00:00:06.000");
+    player.handleShortcut({ type: "subtitle-delay", delta: 0.1 });
+    player.handleShortcut({ type: "subtitle-delay", delta: 0.1 });
+    expect(backend.subtitles).toContain("00:00:05.200 --> 00:00:06.200");
+    expect(sink.flashes.at(-1)).toEqual({ kind: "subtitle", label: "Subtitle delay +0.2 s" });
+    expect(sink.state?.subtitleDelay).toBe(0.2);
+    expect(store.file("/videos/s.mp4")?.subtitleDelay).toBe(0.2);
+
+    // Another file starts at 0; coming back restores 0.2 s.
+    await player.open(media("/videos/other.mp4", { subtitles: [subtitle] }));
+    expect(sink.state?.subtitleDelay).toBe(0);
+    expect(backend.subtitles).toContain("00:00:05.000 --> 00:00:06.000");
+    await player.open(media("/videos/s.mp4", { subtitles: [subtitle] }));
+    expect(sink.state?.subtitleDelay).toBe(0.2);
+    expect(backend.subtitles).toContain("00:00:05.200 --> 00:00:06.200");
+
+    for (let i = 0; i < 5; i++) player.handleShortcut({ type: "subtitle-delay", delta: -0.1 });
+    expect(sink.flashes.at(-1)).toEqual({ kind: "subtitle", label: "Subtitle delay \u22120.3 s" });
+    expect(backend.subtitles).toContain("00:00:04.700 --> 00:00:05.700");
+    for (let i = 0; i < 3; i++) player.handleShortcut({ type: "subtitle-delay", delta: 0.1 });
+    expect(store.file("/videos/s.mp4")?.subtitleDelay).toBeUndefined();
+  });
+
+  it("says so when there are no subtitles to move", async () => {
+    const backend = new FakeBackend();
+    const sink = new RecordingSink();
+    const player = new PlayerController(backend, createResumeStore(memoryStorage()), sink);
+    await player.open(media("/videos/plain.mp4"));
+    player.handleShortcut({ type: "subtitle-delay", delta: 0.1 });
+    expect(sink.flashes.at(-1)).toEqual({ kind: "subtitle", label: "No subtitles" });
+    expect(sink.state?.subtitleDelay).toBe(0);
+  });
+});
+
 describe("held-Space 2x boost", () => {
   async function ready(rate = 1.25) {
     const backend = new FakeBackend();

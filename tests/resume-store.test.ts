@@ -74,6 +74,26 @@ describe("createResumeStore", () => {
     expect(store.file("clip")).toMatchObject({ volume: 1, rate: 2, position: 0 });
   });
 
+  it("keeps a subtitle delay per file only", () => {
+    const storage = memoryStorage();
+    const store = createResumeStore(storage);
+    store.updateFile("/a.mp4", { subtitleDelay: -1.234 });
+    store.updateFile("/a.mp4", { position: 30 });
+    expect(store.file("/a.mp4")?.subtitleDelay).toBe(-1.2);
+    expect(store.file("/b.mp4")).toBeNull();
+    const reloaded = createResumeStore(storage);
+    expect(reloaded.file("/a.mp4")?.subtitleDelay).toBe(-1.2);
+    reloaded.updateFile("/a.mp4", { subtitleDelay: 0 });
+    expect(reloaded.file("/a.mp4")).not.toHaveProperty("subtitleDelay");
+    // Stores written before 0.2.1 have no delay at all.
+    const old = memoryStorage({
+      "glint.player.v1": JSON.stringify({
+        files: { "/c.mp4": { position: 9, subtitleDelay: "x" } },
+      }),
+    });
+    expect(createResumeStore(old).file("/c.mp4")).not.toHaveProperty("subtitleDelay");
+  });
+
   it("forgets the oldest files after the cap", () => {
     const store = createResumeStore(memoryStorage());
     for (let index = 0; index < 205; index += 1) {

@@ -20,17 +20,59 @@ describe("UpdateToast", () => {
     expect(toast.root.hidden).toBe(true);
   });
 
-  it("offers the update with Later and Update", () => {
+  it("offers the update with Later and Update now", () => {
     const { toast, actions, q, buttons } = makeToast();
-    toast.render({ kind: "available", version: "0.1.7" });
+    toast.render({ kind: "available", version: "0.1.7", currentVersion: "0.1.6", notes: null });
     expect(toast.root.hidden).toBe(false);
     expect(q(".update-toast-title").textContent).toBe("Glint 0.1.7 is available");
-    expect(buttons()).toEqual(["Later", "Update"]);
+    expect(q(".update-toast-text").textContent).toContain("You have 0.1.6.");
+    expect(q(".update-toast-notes").hidden).toBe(true);
+    expect(buttons()).toEqual(["Later", "Update now"]);
     expect(q(".update-toast-track").hidden).toBe(true);
     q(".update-toast-primary").click();
     expect(actions.update).toHaveBeenCalledOnce();
     q(".update-toast-later").click();
     expect(actions.later).toHaveBeenCalledOnce();
+  });
+
+  it("lists the release notes as safe text", () => {
+    const { toast, q } = makeToast();
+    const notes = [
+      "### Added",
+      "",
+      "- **Thumbnail previews** on the progress bar.",
+      "  - Works for `MKV` too, see [docs](https://example.com).",
+      "",
+      "### Fixed",
+      "",
+      "- <img src=x onerror=alert(1)> stays text",
+    ].join("\n");
+    toast.render({ kind: "available", version: "0.2.1", currentVersion: "0.2.0", notes });
+    const box = q(".update-toast-notes");
+    expect(box.hidden).toBe(false);
+    expect(q(".update-toast-notes-label").textContent).toBe("What's new");
+    const headings = Array.from(box.querySelectorAll(".update-toast-notes-heading"));
+    expect(headings.map((h) => h.textContent)).toEqual(["Added", "Fixed"]);
+    const items = Array.from(box.querySelectorAll("li"));
+    expect(items).toHaveLength(3);
+    expect(items[0].querySelector("strong")?.textContent).toBe("Thumbnail previews");
+    expect(items[1].classList.contains("is-nested")).toBe(true);
+    expect(items[1].querySelector("code")?.textContent).toBe("MKV");
+    expect(items[1].textContent).toBe("Works for MKV too, see docs.");
+    expect(box.querySelector("img")).toBeNull();
+    expect(items[2].textContent).toBe("<img src=x onerror=alert(1)> stays text");
+  });
+
+  it("shows what's new after an update with one button", () => {
+    const { toast, actions, q, buttons } = makeToast();
+    toast.render({ kind: "updated", version: "0.2.1", notes: "- Faster" });
+    expect(q(".update-toast-title").textContent).toBe("What's new in Glint 0.2.1");
+    expect(buttons()).toEqual(["Got it"]);
+    expect(q(".update-toast-notes li").textContent).toBe("Faster");
+    q(".update-toast-primary").click();
+    expect(actions.later).toHaveBeenCalledOnce();
+    toast.render({ kind: "idle" });
+    expect(toast.root.hidden).toBe(true);
   });
 
   it("shows download progress without buttons and keeps the same nodes", () => {
@@ -81,7 +123,7 @@ describe("UpdateToast", () => {
     const { toast } = makeToast();
     const onDocument = vi.fn();
     document.addEventListener("keydown", onDocument);
-    toast.render({ kind: "available", version: "0.1.7" });
+    toast.render({ kind: "available", version: "0.1.7", currentVersion: "0.1.6", notes: null });
     toast.root
       .querySelector("button")!
       .dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true }));

@@ -119,6 +119,51 @@ pub fn session_args(path: &Path, plan: &Plan, start: f64, encoder: &str) -> Vec<
     args
 }
 
+/// Width of the seek-bar preview frames, in pixels (shown at 160 CSS px, so
+/// this stays sharp on 150% displays).
+pub const PREVIEW_WIDTH: u32 = 240;
+
+/// One small JPEG for the seek-bar preview. Built for speed over precision,
+/// like YouTube's storyboards: jump to the keyframe at or before `at` and
+/// decode only that keyframe.
+pub fn preview_args(path: &Path, at: f64) -> Vec<String> {
+    let mut args: Vec<String> = [
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-nostdin",
+        "-skip_frame",
+        "nokey",
+        "-noaccurate_seek",
+    ]
+    .into_iter()
+    .map(String::from)
+    .collect();
+    let at = if at.is_finite() { at.max(0.0) } else { 0.0 };
+    if at > 0.0 {
+        args.push("-ss".into());
+        args.push(format!("{at:.3}"));
+    }
+    args.push("-i".into());
+    args.push(path.to_string_lossy().into_owned());
+    args.extend(
+        [
+            "-map",
+            "0:v:0",
+            "-an",
+            "-sn",
+            "-dn",
+            "-frames:v",
+            "1",
+            "-vf",
+        ]
+        .map(String::from),
+    );
+    args.push(format!("scale={PREVIEW_WIDTH}:-2"));
+    args.extend(["-q:v", "5", "-f", "mjpeg", "pipe:1"].map(String::from));
+    args
+}
+
 /// One JPEG frame for a Home thumbnail.
 pub fn thumbnail_args(path: &Path, at: f64) -> Vec<String> {
     let mut args: Vec<String> = ["-hide_banner", "-loglevel", "error", "-nostdin"]
@@ -237,6 +282,17 @@ mod tests {
         assert!(line.contains(
             "-c:a aac -b:a 96k -af aformat=channel_layouts=mono,asetpts=N/SR/TB+STARTPTS"
         ));
+    }
+
+    #[test]
+    fn preview_jumps_to_a_keyframe_and_stays_small() {
+        let line = joined(&preview_args(Path::new("/v/a.mkv"), 61.25));
+        assert!(line.starts_with("-hide_banner -loglevel error -nostdin -skip_frame nokey -noaccurate_seek -ss 61.250 -i /v/a.mkv"));
+        assert!(line.contains("-map 0:v:0 -an -sn -dn -frames:v 1 -vf scale=240:-2"));
+        assert!(line.ends_with("-f mjpeg pipe:1"));
+        for bad in [0.0, -3.0, f64::NAN] {
+            assert!(!preview_args(Path::new("a"), bad).contains(&"-ss".to_string()));
+        }
     }
 
     #[test]

@@ -1,5 +1,6 @@
 import { brandMark } from "./icons";
 import { formatProgress, progressRatio, type UpdateState } from "../update/model";
+import { parseNotes, type InlineRun } from "../update/notes";
 
 export interface UpdateToastActions {
   update(): void;
@@ -13,6 +14,8 @@ interface Copy {
   primary?: { label: string; run: () => void };
   secondary?: { label: string; run: () => void };
   progress: boolean;
+  /** Release notes (Markdown) shown under "What's new". */
+  notes?: string | null;
 }
 
 /**
@@ -27,7 +30,9 @@ export class UpdateToast {
   private readonly track: HTMLElement;
   private readonly bar: HTMLElement;
   private readonly buttons: HTMLElement;
+  private readonly notes: HTMLElement;
   private shownStep = "idle";
+  private shownNotes: string | null = null;
 
   constructor(private readonly actions: UpdateToastActions) {
     this.root = el("section", "update-toast");
@@ -47,7 +52,11 @@ export class UpdateToast {
     this.bar = el("div", "update-toast-bar");
     this.track.append(this.bar);
     this.buttons = el("div", "update-toast-actions");
-    body.append(this.title, this.text, this.track, this.buttons);
+    this.notes = el("div", "update-toast-notes");
+    this.notes.hidden = true;
+    this.notes.tabIndex = 0;
+    this.notes.setAttribute("aria-label", "What's new");
+    body.append(this.title, this.text, this.notes, this.track, this.buttons);
     this.root.append(mark, body);
     // Keep clicks and keys inside the card away from the player behind it.
     for (const type of ["click", "dblclick", "keydown"]) {
@@ -67,6 +76,7 @@ export class UpdateToast {
     this.text.textContent = copy.text;
     this.text.hidden = copy.text === "";
     this.track.hidden = !copy.progress;
+    this.paintNotes(copy.notes ?? null);
     const ratio = progressRatio(state);
     this.track.classList.toggle("is-unknown", ratio == null);
     this.bar.style.width = ratio == null ? "" : `${(ratio * 100).toFixed(1)}%`;
@@ -103,10 +113,19 @@ export class UpdateToast {
       case "available":
         return {
           title: `Glint ${state.version} is available`,
-          text: "Glint restarts to finish. Your place is saved.",
-          primary: { label: "Update", run: () => this.actions.update() },
+          text: `You have ${state.currentVersion}. Glint restarts to finish, and your place is saved.`,
+          primary: { label: "Update now", run: () => this.actions.update() },
           secondary: later,
           progress: false,
+          notes: state.notes,
+        };
+      case "updated":
+        return {
+          title: `What's new in Glint ${state.version}`,
+          text: "Glint was updated.",
+          primary: { label: "Got it", run: () => this.actions.later() },
+          progress: false,
+          notes: state.notes,
         };
       case "downloading": {
         const ratio = progressRatio(state);
@@ -152,6 +171,52 @@ export class UpdateToast {
         };
     }
   }
+
+  /** Rebuilt only when the notes change, so scrolling survives re-renders. */
+  private paintNotes(markdown: string | null): void {
+    if (markdown === this.shownNotes) return;
+    this.shownNotes = markdown;
+    const blocks = parseNotes(markdown);
+    this.notes.replaceChildren();
+    this.notes.hidden = blocks.length === 0;
+    if (blocks.length === 0) return;
+    this.notes.append(el("p", "update-toast-notes-label"));
+    this.notes.lastElementChild!.textContent = "What's new";
+    let list: HTMLUListElement | null = null;
+    for (const block of blocks) {
+      if (block.kind === "heading") {
+        list = null;
+        const heading = el("p", "update-toast-notes-heading");
+        heading.textContent = block.text;
+        this.notes.append(heading);
+        continue;
+      }
+      if (block.kind === "text") {
+        list = null;
+        const para = el("p", "update-toast-notes-text");
+        para.append(...runs(block.runs));
+        this.notes.append(para);
+        continue;
+      }
+      if (!list) {
+        list = el("ul", "update-toast-notes-list");
+        this.notes.append(list);
+      }
+      const item = el("li", block.depth > 0 ? "is-nested" : "");
+      item.append(...runs(block.runs));
+      list.append(item);
+    }
+    this.notes.scrollTop = 0;
+  }
+}
+
+function runs(items: InlineRun[]): Node[] {
+  return items.map((run) => {
+    if (!run.bold && !run.code) return document.createTextNode(run.text);
+    const node = document.createElement(run.code ? "code" : "strong");
+    node.textContent = run.text;
+    return node;
+  });
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(

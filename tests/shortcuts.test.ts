@@ -65,6 +65,19 @@ describe("mapShortcut", () => {
   });
 });
 
+describe("subtitle delay keys", () => {
+  it("maps G and H like VLC and lets them repeat", () => {
+    expect(mapShortcut(key({ key: "g" }))).toEqual({ type: "subtitle-delay", delta: -0.1 });
+    expect(mapShortcut(key({ key: "H" }))).toEqual({ type: "subtitle-delay", delta: 0.1 });
+    expect(mapShortcut(key({ key: "h", repeat: true }))).toEqual({
+      type: "subtitle-delay",
+      delta: 0.1,
+    });
+    expect(mapShortcut(key({ key: "G", shiftKey: true }))).toBeNull();
+    expect(mapShortcut(key({ key: "g", ctrlKey: true }))).toBeNull();
+  });
+});
+
 describe("isTextEntry", () => {
   it("lets player shortcuts through a volume slider", () => {
     expect(isTextEntry("INPUT", "range", false)).toBe(false);

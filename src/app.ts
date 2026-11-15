@@ -19,6 +19,8 @@ import { HomeView, type HomeActions } from "./ui/home";
 import { UpdateToast } from "./ui/update-toast";
 import { PlayerView, type ViewActions } from "./ui/view";
 import { UpdateController } from "./update/controller";
+import { takeWhatsNew } from "./update/whats-new";
+import changelog from "../CHANGELOG.md?raw";
 import { APP_VERSION } from "./version";
 
 /** A rescan on returning home is skipped if the last one is this recent. */
@@ -113,6 +115,7 @@ export async function start(root: HTMLElement): Promise<void> {
     onFullscreen: (on) => void applyFullscreen(on),
     onTheater: (on) => void applyTheater(on),
     onProgress: (id, position, duration) => history.progress(id, position, duration),
+    onSource: (source) => view.setPreviewSource(source),
   });
 
   const home = new HomeView(homeActions, thumbs);
@@ -142,6 +145,9 @@ export async function start(root: HTMLElement): Promise<void> {
     } catch {
       // Window resize events are optional. Fullscreen still toggles on the button.
     }
+    // Once after an update: what changed, from the changelog bundled with this build.
+    const whatsNew = takeWhatsNew(localStorage, APP_VERSION, changelog);
+    if (whatsNew) updates?.showWhatsNew(whatsNew.version, whatsNew.notes);
     updates?.scheduleAutoCheck();
     const launch = await desktop.takeLaunchFiles();
     if (launch.length > 0) await openPaths(launch);

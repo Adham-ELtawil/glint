@@ -76,7 +76,12 @@ describe("update model", () => {
   });
 
   it("ignores download events outside a download", () => {
-    const state: UpdateState = { kind: "available", version: "0.1.7" };
+    const state: UpdateState = {
+      kind: "available",
+      version: "0.1.7",
+      currentVersion: "0.1.6",
+      notes: null,
+    };
     expect(applyDownloadEvent(state, { event: "finished" })).toBe(state);
   });
 
@@ -102,7 +107,12 @@ describe("update model", () => {
   });
 
   it("holds offers back in fullscreen but keeps a running download visible", () => {
-    const offer: UpdateState = { kind: "available", version: "0.1.7" };
+    const offer: UpdateState = {
+      kind: "available",
+      version: "0.1.7",
+      currentVersion: "0.1.6",
+      notes: null,
+    };
     const download: UpdateState = { kind: "downloading", version: "0.1.7", received: 1, total: 2 };
     expect(visibleState(offer, true)).toEqual({ kind: "idle" });
     expect(visibleState(offer, false)).toBe(offer);
@@ -112,6 +122,29 @@ describe("update model", () => {
 });
 
 describe("UpdateController", () => {
+  it("passes the release notes on with the offer", async () => {
+    const check = vi.fn(async () => ({ ...info, notes: "  ### Added\n\n- **Previews**  " }));
+    const { controller, last } = setup({ check });
+    await controller.check(false);
+    expect(last()).toEqual({
+      kind: "available",
+      version: "0.1.7",
+      currentVersion: "0.1.6",
+      notes: "### Added\n\n- **Previews**",
+    });
+  });
+
+  it("shows what's new once, but never over an offer", async () => {
+    const { controller, last } = setup({ check: async () => info });
+    controller.showWhatsNew("0.1.6", "- Faster");
+    expect(last()).toEqual({ kind: "updated", version: "0.1.6", notes: "- Faster" });
+    controller.dismiss();
+    expect(last()).toEqual({ kind: "idle" });
+    await controller.check(true);
+    controller.showWhatsNew("0.1.6", "- Faster");
+    expect(last().kind).toBe("available");
+  });
+
   it("checks silently after a delay and offers a newer version", async () => {
     const check = vi.fn(async () => info);
     const { controller, timers, last } = setup({ check });
@@ -119,7 +152,14 @@ describe("UpdateController", () => {
     expect(check).not.toHaveBeenCalled();
     expect(timers[0].ms).toBe(AUTO_CHECK_DELAY_MS);
     timers[0].fn();
-    await vi.waitFor(() => expect(last()).toEqual({ kind: "available", version: "0.1.7" }));
+    await vi.waitFor(() =>
+      expect(last()).toEqual({
+        kind: "available",
+        version: "0.1.7",
+        currentVersion: "0.1.6",
+        notes: null,
+      }),
+    );
   });
 
   it("shows nothing when a silent check fails or finds nothing", async () => {
@@ -154,7 +194,14 @@ describe("UpdateController", () => {
     await controller.check(true);
     expect(last()).toEqual({ kind: "failed", step: "check", version: null, reason: "network" });
     controller.retry();
-    await vi.waitFor(() => expect(last()).toEqual({ kind: "available", version: "0.1.7" }));
+    await vi.waitFor(() =>
+      expect(last()).toEqual({
+        kind: "available",
+        version: "0.1.7",
+        currentVersion: "0.1.6",
+        notes: null,
+      }),
+    );
     warn.mockRestore();
   });
 
@@ -249,7 +296,12 @@ describe("UpdateController", () => {
     await controller.check(false);
     expect(last()).toEqual({ kind: "idle" });
     controller.setFullscreen(false);
-    expect(last()).toEqual({ kind: "available", version: "0.1.7" });
+    expect(last()).toEqual({
+      kind: "available",
+      version: "0.1.7",
+      currentVersion: "0.1.6",
+      notes: null,
+    });
   });
 
   it("drops a stale check result after Later", async () => {

@@ -4,6 +4,19 @@ All notable changes to Glint are listed here. The format is based on [Keep a Cha
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-11-15
+
+### Added
+
+- **Seek-bar previews.** Hover over the progress bar to see a thumbnail of that moment above the time, just like YouTube. It works for MP4 and WebM and for the formats Glint plays through FFmpeg (MKV, AVI, MOV and more). Audio-only files show the time as before.
+- **Subtitle timing.** Press **G** to show subtitles 0.1 s earlier and **H** to show them 0.1 s later. The current delay appears on screen, and Glint remembers it for each video.
+- **Release notes in the update card.** When a new version is out, the card shows the version you have, the new version, and what's new in it, with **Update now** and **Later**. After an update, Glint shows **What's new** once.
+
+### Fixed
+
+- **Voice recordings in AVI files play again.** Recordings from voice recorders, dashcams and older cameras that use IMA ADPCM, A-law, µ-law, G.726, GSM, TrueSpeech or 32-bit PCM audio now play. Glint's FFmpeg build (`ffmpeg-9.0.2-glint2`) adds these decoders.
+- Files whose audio or video format Glint can't decode now say **This audio format isn't supported** (or video) and name the format, instead of a general error. A video whose audio can't be decoded still plays, without sound, and says so.
+
 ## [0.2.0] - 2026-10-29
 
 ### Added
@@ -125,7 +138,8 @@ All notable changes to Glint are listed here. The format is based on [Keep a Cha
 - Saved position, volume, mute, and speed for each file.
 - NSIS installer with file associations and WebView2 bootstrapper.
 
-[Unreleased]: https://github.com/Adham-ELtawil/glint/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/Adham-ELtawil/glint/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/Adham-ELtawil/glint/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/Adham-ELtawil/glint/compare/v0.1.7...v0.2.0
 [0.1.7]: https://github.com/Adham-ELtawil/glint/compare/v0.1.6...v0.1.7
 [0.1.6]: https://github.com/Adham-ELtawil/glint/compare/v0.1.5...v0.1.6

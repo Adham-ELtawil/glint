@@ -1,11 +1,11 @@
-import type { OpenedMedia, PlaylistItem, StreamSource } from "../model/media";
+import type { MediaSource, OpenedMedia, PlaylistItem, StreamSource } from "../model/media";
 import type { PlaybackBackend, SubtitleCueTrack } from "./backend";
 import { chapterAt, parseChapters, type Chapter } from "./chapters";
 import { describeMediaError, describeUnsupported, droppedAudioNote } from "./errors";
 import { clampRate, formatRate, stepRate } from "./rates";
 import { createResumeStore, resumePosition, type ResumeStore } from "./resume-store";
 import type { ShortcutAction } from "./shortcuts";
-import { srtToVtt } from "./subtitles";
+import { clampSubtitleDelay, formatSubtitleDelay, shiftVtt, srtToVtt } from "./subtitles";
 import { clamp01, clampTime, formatTime } from "./time";
 import { initialState, type FlashEffect, type PlayerState } from "./state";
 
@@ -17,6 +17,8 @@ export interface PlayerSink {
   onTheater(on: boolean): void;
   /** Called whenever the position is saved, for watch history. */
   onProgress?(id: string, position: number, duration: number): void;
+  /** The source being played, including a retry through ffmpeg (seek-bar previews). */
+  onSource?(source: MediaSource): void;
 }
 
 interface PreparedTrack extends SubtitleCueTrack {
@@ -62,6 +64,8 @@ export class PlayerController {
   /** Rate and paused state to restore when a held-Space boost ends. */
   private boost: { rate: number; paused: boolean } | null = null;
   private convertNote: string | null = null;
+  /** Seconds the subtitles are shifted by for this file (G / H). */
+  private subtitleDelay = 0;
   private pictureTimer: ReturnType<typeof setTimeout> | null = null;
   private unsubscribe: () => void;
 
@@ -100,6 +104,7 @@ export class PlayerController {
     this.clearPictureCheck();
     const generation = ++this.generation;
     this.media = media;
+    this.sink.onSource?.(media.source);
     this.convertNote = media.source.droppedAudio
       ? droppedAudioNote(media.source.droppedAudio)
       : convertNoteFor(media.source.stream);
@@ -110,6 +115,7 @@ export class PlayerController {
     this.chapters = [];
     this.tracks = [];
     this.activeTrackId = null;
+    this.subtitleDelay = 0;
     this.opening = true;
     this.publish();
     this.sink.onTitle(media.source.filename);
@@ -175,10 +181,11 @@ export class PlayerController {
       label: file.label,
       vtt: file.format === "srt" ? srtToVtt(file.content) : file.content,
     }));
+    this.subtitleDelay = clampSubtitleDelay(memory?.subtitleDelay ?? 0);
     this.captionsOn = prefs.captions;
     if (this.captionsOn && this.tracks[0]) {
       this.activeTrackId = this.tracks[0].id;
-      this.backend.setSubtitles(this.tracks[0]);
+      this.showTrack(this.tracks[0]);
     } else {
       this.activeTrackId = null;
       this.backend.setSubtitles(null);
@@ -292,6 +299,9 @@ export class PlayerController {
         this.cycleRate(action.direction);
         break;
       case "next":
+        break;
+      case "subtitle-delay":
+        this.nudgeSubtitleDelay(action.delta);
         break;
       case "escape":
         if (this.fullscreen) this.setFullscreen(false);
@@ -449,7 +459,7 @@ export class PlayerController {
     if (this.captionsOn) {
       const track = this.tracks.find((item) => item.id === this.activeTrackId) ?? this.tracks[0];
       this.activeTrackId = track.id;
-      this.backend.setSubtitles(track);
+      this.showTrack(track);
     } else {
       this.backend.setSubtitles(null);
     }
@@ -470,8 +480,45 @@ export class PlayerController {
     this.activeTrackId = track.id;
     this.captionsOn = true;
     this.store.setCaptions(true);
-    this.backend.setSubtitles(track);
+    this.showTrack(track);
     this.publish();
+  }
+
+  /**
+   * G / H: shows subtitles earlier or later by `delta` seconds. The delay
+   * belongs to this file and is saved with it.
+   */
+  nudgeSubtitleDelay(delta: number): void {
+    if (!this.media || this.buildPhase() === "error") return;
+    const track = this.captionsOn
+      ? this.tracks.find((item) => item.id === this.activeTrackId)
+      : undefined;
+    if (!track) {
+      this.sink.onFlash({ kind: "subtitle", label: "No subtitles" });
+      return;
+    }
+    this.subtitleDelay = clampSubtitleDelay(this.subtitleDelay + delta);
+    this.showTrack(track);
+    this.store.updateFile(this.media.source.id, { subtitleDelay: this.subtitleDelay });
+    this.sink.onFlash({
+      kind: "subtitle",
+      label: `Subtitle delay ${formatSubtitleDelay(this.subtitleDelay)}`,
+    });
+    this.publish();
+  }
+
+  /** Hands a track to the backend with the current delay applied. */
+  private showTrack(track: PreparedTrack): void {
+    if (this.subtitleDelay === 0) {
+      this.backend.setSubtitles(track);
+      return;
+    }
+    // A new id makes the backend load the shifted cues instead of reusing the old ones.
+    this.backend.setSubtitles({
+      ...track,
+      id: `${track.id}#delay=${this.subtitleDelay}`,
+      vtt: shiftVtt(track.vtt, this.subtitleDelay),
+    });
   }
 
   addSubtitle(track: PreparedTrack): void {
@@ -672,6 +719,7 @@ export class PlayerController {
       resumeLabel: this.resumeLabel,
       boosting: this.boost != null,
       convertNote: phase === "ready" ? this.convertNote : null,
+      subtitleDelay: this.subtitleDelay,
     };
   }
 }

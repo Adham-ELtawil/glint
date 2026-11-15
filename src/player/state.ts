@@ -30,6 +30,8 @@ export interface PlayerState {
   boosting: boolean;
   /** "Converting audio…" etc. while the file plays through Glint's ffmpeg. */
   convertNote: string | null;
+  /** Seconds the subtitles are shifted by (G / H); positive is later. */
+  subtitleDelay: number;
 }
 
 export type FlashEffect =
@@ -37,7 +39,8 @@ export type FlashEffect =
   | { kind: "pause" }
   | { kind: "seek"; direction: -1 | 1; label: string }
   | { kind: "volume"; label: string }
-  | { kind: "rate"; label: string };
+  | { kind: "rate"; label: string }
+  | { kind: "subtitle"; label: string };
 
 export function initialState(): PlayerState {
   return {
@@ -66,5 +69,6 @@ export function initialState(): PlayerState {
     resumeLabel: null,
     boosting: false,
     convertNote: null,
+    subtitleDelay: 0,
   };
 }

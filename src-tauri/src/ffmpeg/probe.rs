@@ -239,10 +239,12 @@ mod tests {
         assert!(!probe.audio[0].decodable);
         assert!(probe.audio[1].decodable);
         assert!(!probe.audio[2].decodable);
-        let video = parse(r#"{"streams":[{"codec_type":"video","codec_name":"h264","pix_fmt":"yuv420p"}]}"#)
-            .unwrap()
-            .video
-            .unwrap();
+        let video = parse(
+            r#"{"streams":[{"codec_type":"video","codec_name":"h264","pix_fmt":"yuv420p"}]}"#,
+        )
+        .unwrap()
+        .video
+        .unwrap();
         assert!(video.decodable);
     }
 

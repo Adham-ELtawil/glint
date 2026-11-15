@@ -401,6 +401,39 @@ video::cue {
   bottom: 24px;
 }
 
+/* Seek-bar preview: the frame on top with a white edge, the time under it. */
+.tooltip-preview {
+  display: none;
+}
+.tooltip.has-preview {
+  background: transparent;
+  padding: 0;
+  gap: 4px;
+}
+.tooltip.has-preview .tooltip-preview {
+  display: block;
+  width: 160px;
+  min-height: 90px;
+  overflow: hidden;
+  border: 2px solid #fff;
+  border-radius: 8px;
+  background: #0f0f0f;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+.tooltip-preview img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 120px;
+  object-fit: contain;
+}
+.tooltip-preview img[hidden] {
+  display: none;
+}
+.tooltip.has-preview .tooltip-time,
+.tooltip.has-preview .tooltip-chapter {
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.9);
+}
 .tooltip-chapter {
   color: #eee;
   font-weight: 400;
@@ -912,9 +945,9 @@ video::cue {
   background: #e8e8e8;
 }
 .hints {
-  margin-top: 22px !important;
+  margin-top: 22px;
   font-size: 12px;
-  color: #777 !important;
+  color: #777;
 }
 
 .spinner {
@@ -1081,7 +1114,7 @@ video::cue {
 }
 
 [hidden] {
-  display: none !important;
+  display: none;
 }
 
 .app.is-fullscreen .menubar,
@@ -1659,8 +1692,8 @@ video::cue {
   position: relative;
   width: 88px;
   height: 88px;
-  animation-name: mark-in !important;
-  animation-duration: 0.6s !important;
+  animation-name: mark-in;
+  animation-duration: 0.6s;
 }
 .home-empty-mark::before {
   content: "";
@@ -2006,6 +2039,70 @@ video::cue {
   border-radius: 2px;
   background: rgba(255, 255, 255, 0.2);
 }
+.update-toast-notes {
+  max-height: min(240px, 40vh);
+  margin-top: 10px;
+  padding: 10px 12px;
+  overflow-y: auto;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 18px;
+  user-select: text;
+  overscroll-behavior: contain;
+}
+.update-toast-notes:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+.update-toast-notes p {
+  margin: 0;
+}
+.update-toast-notes .update-toast-notes-label {
+  margin-bottom: 4px;
+  color: var(--dim);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.update-toast-notes .update-toast-notes-heading {
+  margin-top: 8px;
+  font-weight: 500;
+}
+.update-toast-notes .update-toast-notes-label + .update-toast-notes-heading {
+  margin-top: 0;
+}
+.update-toast-notes .update-toast-notes-text {
+  margin-top: 4px;
+  color: var(--dim);
+}
+.update-toast-notes-list {
+  margin: 2px 0 0;
+  padding-left: 16px;
+}
+.update-toast-notes-list li {
+  margin-top: 3px;
+  color: #d0d0d0;
+}
+.update-toast-notes-list li.is-nested {
+  margin-left: 14px;
+  list-style-type: circle;
+  color: var(--dim);
+}
+.update-toast-notes strong {
+  color: var(--text);
+  font-weight: 500;
+}
+.update-toast-notes code {
+  padding: 0 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 11px;
+}
+.update-toast-notes[hidden],
 .update-toast-track[hidden],
 .update-toast-text[hidden],
 .update-toast-actions[hidden] {

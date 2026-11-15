@@ -71,8 +71,14 @@ export class UpdateController {
       return;
     }
     if (run !== this.run) return;
-    if (found) this.set({ kind: "available", version: found.version });
-    else if (manual) {
+    if (found) {
+      this.set({
+        kind: "available",
+        version: found.version,
+        currentVersion: found.currentVersion || this.options.currentVersion,
+        notes: found.notes?.trim() || null,
+      });
+    } else if (manual) {
       this.set({ kind: "current", version: this.options.currentVersion });
       this.hideTimer = this.setTimer(() => {
         if (this.state.kind === "current") this.set({ kind: "idle" });
@@ -105,6 +111,15 @@ export class UpdateController {
     if (run === this.run && this.state.kind === "downloading") {
       this.set({ kind: "installing", version });
     }
+  }
+
+  /**
+   * Shows what changed in the version that just got installed. Never covers
+   * an update that is already on screen.
+   */
+  showWhatsNew(version: string, notes: string): void {
+    if (this.state.kind !== "idle") return;
+    this.set({ kind: "updated", version, notes });
   }
 
   /** Retry whatever failed. */

@@ -15,7 +15,7 @@ use bytes::Bytes;
 use http_body::Frame;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncSeekExt, ReadBuf};
 
-use crate::ffmpeg::args::{session_args, video_encoder};
+use crate::ffmpeg::args::{preview_args, session_args, video_encoder};
 use crate::ffmpeg::plan::Plan;
 use crate::ffmpeg::process;
 use crate::range::parse_byte_range;
@@ -45,7 +45,14 @@ struct Shared {
     files: Arc<Mutex<HashMap<String, PathBuf>>>,
     streams: Arc<Mutex<HashMap<String, StreamEntry>>>,
     ffmpeg: Option<PathBuf>,
+    /// Seek-bar previews run one small ffmpeg each; at most this many at once.
+    previews: Arc<tokio::sync::Semaphore>,
 }
+
+/// Preview frames that may be made at the same time.
+const PREVIEW_JOBS: usize = 2;
+/// A preview that takes longer than this is abandoned (ffmpeg is killed).
+const PREVIEW_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
 
 impl MediaServer {
     pub fn start() -> Result<Self, String> {
@@ -58,10 +65,12 @@ impl MediaServer {
             files: Arc::new(Mutex::new(HashMap::new())),
             streams: Arc::new(Mutex::new(HashMap::new())),
             ffmpeg,
+            previews: Arc::new(tokio::sync::Semaphore::new(PREVIEW_JOBS)),
         };
         let app = Router::new()
             .route("/media/{token}", any(serve))
             .route("/stream/{token}", any(stream))
+            .route("/frame/{token}", any(frame))
             .with_state(shared.clone());
 
         let std_listener = std::net::TcpListener::bind("127.0.0.1:0")
@@ -259,6 +268,58 @@ async fn stream(
     {
         Ok(response) => with_cors(response),
         Err(_) => text(StatusCode::INTERNAL_SERVER_ERROR, "couldn't start ffmpeg"),
+    }
+}
+
+/// `GET /frame/<token>?t=<seconds>`: a small JPEG of the streamed file at
+/// about `t`, for the seek-bar preview of files the webview can't open itself.
+async fn frame(
+    State(shared): State<Shared>,
+    AxumPath(token): AxumPath<String>,
+    method: Method,
+    request: Request<Body>,
+) -> Response {
+    if method == Method::OPTIONS {
+        return empty(StatusCode::NO_CONTENT);
+    }
+    if method != Method::GET {
+        return text(StatusCode::METHOD_NOT_ALLOWED, "method not allowed");
+    }
+    let path = {
+        let streams = shared.streams.lock().expect("stream registry");
+        streams.get(&token).map(|entry| entry.path.clone())
+    };
+    let (Some(path), Some(ffmpeg)) = (path, shared.ffmpeg.clone()) else {
+        return text(StatusCode::NOT_FOUND, "not found");
+    };
+    let at = start_from_query(request.uri().query());
+    let Ok(_permit) = shared.previews.clone().acquire_owned().await else {
+        return text(StatusCode::SERVICE_UNAVAILABLE, "busy");
+    };
+    let child = match process::tokio_command(&ffmpeg)
+        .args(preview_args(&path, at))
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+    {
+        Ok(child) => child,
+        Err(_) => return text(StatusCode::INTERNAL_SERVER_ERROR, "couldn't start ffmpeg"),
+    };
+    process::adopt(&child);
+    // On timeout the future (and the child, kill_on_drop) is dropped.
+    let output = match tokio::time::timeout(PREVIEW_TIMEOUT, child.wait_with_output()).await {
+        Ok(Ok(output)) if output.status.success() && !output.stdout.is_empty() => output,
+        _ => return text(StatusCode::INTERNAL_SERVER_ERROR, "no frame"),
+    };
+    match Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, "image/jpeg")
+        .header(header::CACHE_CONTROL, "no-store")
+        .body(Body::from(output.stdout))
+    {
+        Ok(response) => with_cors(response),
+        Err(_) => text(StatusCode::INTERNAL_SERVER_ERROR, "no frame"),
     }
 }
 
@@ -575,6 +636,48 @@ mod tests {
             assert!(first <= expected + 0.1, "{first} vs {expected}");
             assert!(first >= expected - 10.0, "{first} vs {expected}");
         }
+    }
+
+    #[test]
+    fn frames_need_a_registered_stream() {
+        let server = MediaServer::start_with(Some(std::path::PathBuf::from("/no/ffmpeg"))).unwrap();
+        let (status, _, _) = http(
+            &format!("http://127.0.0.1:{}/frame/nope?t=3", server.port),
+            None,
+        );
+        assert_eq!(status, 404);
+        let plain = MediaServer::start().unwrap();
+        let (status, _, _) = http(&format!("http://127.0.0.1:{}/frame/nope", plain.port), None);
+        assert_eq!(status, 404);
+    }
+
+    /// A real preview JPEG; runs only with GLINT_FFMPEG_DIR and GLINT_TEST_MEDIA
+    /// (a file with video).
+    #[test]
+    fn makes_a_preview_jpeg() {
+        let (Some(ffmpeg), Ok(media)) = (
+            crate::ffmpeg::tool_path("ffmpeg"),
+            std::env::var("GLINT_TEST_MEDIA"),
+        ) else {
+            return;
+        };
+        let ffprobe = crate::ffmpeg::tool_path("ffprobe").unwrap();
+        let path = std::path::PathBuf::from(media);
+        let probe = crate::ffmpeg::probe::run(&ffprobe, &path).unwrap();
+        let plan = crate::ffmpeg::plan::plan(&probe, true);
+        let server = MediaServer::start_with(Some(ffmpeg)).unwrap();
+        let url = server
+            .register_stream(&path, plan)
+            .unwrap()
+            .replace("/stream/", "/frame/");
+        let (status, headers, body) = http(&format!("{url}?t=2"), None);
+        assert_eq!(status, 200, "{headers}");
+        assert!(
+            headers
+                .to_ascii_lowercase()
+                .contains("content-type: image/jpeg")
+        );
+        assert_eq!(&body[..2], &[0xFF, 0xD8]);
     }
 
     /// First video `tfdt` in seconds, using the first track's `mdhd` timescale.
