@@ -305,7 +305,9 @@ export class PlayerView {
     bubble.className =
       effect.kind === "play" || effect.kind === "pause"
         ? "feedback-bubble is-bezel"
-        : "feedback-bubble";
+        : effect.kind === "subtitle"
+          ? "feedback-bubble is-pill"
+          : "feedback-bubble";
     bubble.innerHTML = icon(glyph);
     if (label) {
       const text = document.createElement("span");
