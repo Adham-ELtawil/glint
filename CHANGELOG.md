@@ -8,11 +8,11 @@ All notable changes to Glint are listed here. The format is based on [Keep a Cha
 
 ### Added
 
-- **Search your videos.** A search box at the top of Home finds videos by name across Continue watching and your folders. Type one or more words: videos that match more of them come first. Press **Ctrl+F** or **/** to jump to the box, and **Esc** or the **×** button to clear it. Suggested by DeathfireD ([#18](https://github.com/Adham-ELtawil/glint/issues/18)).
+- **Search your videos.** A search box at the top of Home finds videos by name across Continue watching and your folders. Type one or more words: videos that match more of them come first. Press **Ctrl+F** or **/** to jump to the box, and **Esc** or the **×** button to clear it. Suggested by our community ([#18](https://github.com/Adham-ELtawil/glint/issues/18)).
 
 ### Fixed
 
-- **The top bar no longer disappears in theater mode.** In theater mode, or when the window is maximized, the top bar with **Home** and the menus now sits over the video and fades away with the player controls. Move the mouse to bring it back. It stays on screen while the video is paused. Thanks to DeathfireD for reporting this ([#16](https://github.com/Adham-ELtawil/glint/issues/16)).
+- **The top bar no longer disappears in theater mode.** In theater mode, or when the window is maximized, the top bar with **Home** and the menus now sits over the video and fades away with the player controls. Move the mouse to bring it back. It stays on screen while the video is paused. Thanks to our users for reporting this ([#16](https://github.com/Adham-ELtawil/glint/issues/16)).
 - Right-click on a video now has a **Home** item, and **Backspace** still takes you back to Home from anywhere in the player.
 
 ## [0.2.1] - 2026-11-15
