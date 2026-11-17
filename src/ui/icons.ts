@@ -29,7 +29,8 @@ export type IconName =
   | "folder"
   | "more"
   | "film"
-  | "expand";
+  | "expand"
+  | "search";
 
 interface Glyph {
   /** viewBox; defaults to the 24px grid. Material Symbols use a 960 grid. */
@@ -115,6 +116,9 @@ const GLYPHS: Record<IconName, Glyph> = {
       `<path ${SOFT} d="M10 9.2 15 12l-5 2.8z"/>`,
   },
   expand: { body: `<path ${LINE} d="m6.4 9.4 5.6 5.6 5.6-5.6"/>` },
+  search: {
+    body: `<circle ${LINE} cx="10.4" cy="10.4" r="6.4"/><path ${LINE} d="m15.2 15.2 5.4 5.4"/>`,
+  },
 };
 
 /** Play and pause share point counts so CSS can morph one into the other. */

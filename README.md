@@ -81,11 +81,12 @@ Open a video and the same control bar, shortcuts, and animations you already kno
 - Right-click a video in Explorer and choose **Open with → Glint**. The installer adds Glint to the **Open with** list for MP4, M4V, WebM, MKV, MOV, AVI, WMV, FLV, TS, MPEG, and the other formats below, without making it the default for any new format. To make it the default, choose **Open with → Choose another app**, select Glint, and tick **Always**.
 - From a terminal: `glint "C:\Videos\movie.mp4"`
 
-**Home screen.** Glint opens to its home screen unless you opened it with a file. Get back to it from the **Home** button at the top left, the Glint logo, **View → Home**, Backspace, or your mouse's back button. Playback pauses while you are there.
+**Home screen.** Glint opens to its home screen unless you opened it with a file. Get back to it from the **Home** button at the top left, the Glint logo, **View → Home**, right-click → **Home** on the video, Backspace, or your mouse's back button. Playback pauses while you are there.
 
 - **Continue watching** lists the videos you played most recently, newest first, with how far you got. Click a card to resume, or right-click it for **Play from the beginning**. Hover a card and click **×**, or select it and press Delete, to remove it (there is an **Undo**). A video that was moved or deleted shows as unavailable.
 - **Folders.** Each folder gets its own shelf ("From Videos"), newest videos first. Glint looks at the folder and one level of subfolders, and skips hidden and system files. Add more folders with **Add a folder** at the bottom of the home screen or **File → Add folder to Home…**, and remove one from the **⋮** menu on its shelf. Removing a folder from Home doesn't delete anything.
 - **Thumbnails** are made from a frame about 10% into each video the first time it appears, then cached. Formats WebView2 can't decode (such as AVI or WMV) get their thumbnail from Glint's FFmpeg; a file that can't be read at all gets a plain tile with the file type.
+- **Search.** The box at the top of Home finds videos by name in Continue watching and your folders. Type one or more words; videos matching more of them come first. Ctrl+F or `/` jumps to it, and Esc clears it.
 - Use the arrow keys to move between cards, Enter to play, and the Menu key or Shift+F10 for the card's menu.
 
 **Playlist.** Glint lists the other videos in the same folder in natural order (`2.mp4` before `10.mp4`). At the end of a video, the end screen offers **Replay**, and **Up next** when there is another video in the folder.
@@ -109,7 +110,7 @@ Open a video and the same control bar, shortcuts, and animations you already kno
 
 **Speed.** **Settings → Playback speed**, or `<` and `>`, from 0.25× to 2×.
 
-**Theater mode** (T) maximizes the window and hides the menu bar. **Fullscreen** is F, or double-click the video.
+**Theater mode** (T) maximizes the window and lets the video use all of it. The menu bar floats over the top of the video and fades with the controls; move the mouse to bring it back. **Fullscreen** is F, or double-click the video.
 
 The **right-click menu** on the video has Open, Open subtitle, Play/Pause, and Fullscreen.
 
@@ -133,6 +134,7 @@ The **right-click menu** on the video has Open, Open subtitle, Play/Pause, and F
 | Shift+N               | Next video in the folder          |
 | Esc                   | Close a menu, or leave fullscreen |
 | Backspace             | Go to the home screen             |
+| Ctrl+F or `/`         | Search Home                       |
 | Ctrl+O                | Open a video                      |
 | Ctrl+Q                | Quit                              |
 

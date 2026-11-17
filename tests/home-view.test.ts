@@ -292,3 +292,92 @@ describe("toast", () => {
     expect(undo).toHaveBeenCalledOnce();
   });
 });
+
+describe("home search (issue #18)", () => {
+  const type = (root: HTMLElement, text: string) => {
+    const input = root.querySelector<HTMLInputElement>(".home-search-input")!;
+    input.value = text;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    return input;
+  };
+  const titles = (root: HTMLElement) =>
+    [...root.querySelectorAll(".card-title")].map((node) => node.textContent);
+
+  const library = () =>
+    model({
+      history: [
+        { entry: entry("Dog walk.mp4", 10, 100), available: true },
+        { entry: entry("Cat nap.mkv", 10, 100), available: true },
+      ],
+      sections: [
+        {
+          folder,
+          videos: [video("Birthday cat and dog.mp4"), video("Beach.mp4"), video("Dog park.mov")],
+          truncated: false,
+        },
+      ],
+    });
+
+  it("hides the search box on the first-run screen", () => {
+    const { view, root } = makeHome();
+    view.render(model());
+    expect(root.querySelector<HTMLElement>(".home-search")!.hidden).toBe(true);
+    view.render(library());
+    expect(root.querySelector<HTMLElement>(".home-search")!.hidden).toBe(false);
+  });
+
+  it("filters every shelf by title and ranks by matched words", () => {
+    const { view, root } = makeHome();
+    view.render(library());
+    type(root, "cat dog");
+    expect(titles(root)).toEqual(["Cat nap", "Dog walk", "Birthday cat and dog", "Dog park"]);
+    expect(root.querySelector(".home-add")).toBeNull();
+  });
+
+  it("clears with the button and with Escape", () => {
+    const { view, root } = makeHome();
+    view.render(library());
+    const input = type(root, "beach");
+    expect(titles(root)).toEqual(["Beach"]);
+    const clear = root.querySelector<HTMLButtonElement>(".home-search-clear")!;
+    expect(clear.hidden).toBe(false);
+    clear.click();
+    expect(input.value).toBe("");
+    expect(clear.hidden).toBe(true);
+    expect(titles(root)).toHaveLength(5);
+
+    type(root, "beach");
+    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    expect(input.value).toBe("");
+    expect(titles(root)).toHaveLength(5);
+  });
+
+  it("says when nothing matches", () => {
+    const { view, root } = makeHome();
+    view.render(library());
+    type(root, "zebra");
+    expect(titles(root)).toEqual([]);
+    expect(root.querySelector(".home-no-match h2")!.textContent).toBe("No videos match");
+  });
+
+  it("keeps the search when Home re-renders", () => {
+    const { view, root } = makeHome();
+    view.render(library());
+    type(root, "beach");
+    view.render(library());
+    expect(titles(root)).toEqual(["Beach"]);
+  });
+
+  it("focuses the search box with Ctrl+F and /", () => {
+    const { view, root } = makeHome();
+    view.render(library());
+    const input = root.querySelector<HTMLInputElement>(".home-search-input")!;
+    const find = new KeyboardEvent("keydown", { key: "f", ctrlKey: true, cancelable: true });
+    window.dispatchEvent(find);
+    expect(document.activeElement).toBe(input);
+    expect(find.defaultPrevented).toBe(true);
+    input.blur();
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "/", cancelable: true }));
+    expect(document.activeElement).toBe(input);
+  });
+});

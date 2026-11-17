@@ -1135,13 +1135,32 @@ video::cue {
   display: none !important;
 }
 
-.app.is-fullscreen .menubar,
-.app.is-theater .menubar {
+.app.is-fullscreen .menubar {
   display: none;
 }
 /* The top bar is the way back from Home, so it stays in theater mode. */
 .app.is-home .menubar {
   display: flex;
+}
+/*
+ * Theater mode gives the video the whole window, so the top bar floats over
+ * it instead and fades with the controls: moving the mouse (or pausing)
+ * brings it back with Home and the menus, idle playback hides it again.
+ */
+.shell {
+  position: relative;
+}
+.app.is-theater:not(.is-home):not(.is-fullscreen) .menubar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0));
+  transition: opacity 0.25s cubic-bezier(0, 0, 0.2, 1);
+}
+.app.is-theater.is-idle:not(.is-home):not(.is-fullscreen) .menubar {
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* ---------------------------------------------------------------- Home */
@@ -1174,6 +1193,9 @@ video::cue {
 
 .home-content {
   padding: 16px var(--home-gutter) 56px;
+}
+.home-search:not([hidden]) + .home-content {
+  padding-top: 8px;
 }
 .home.is-arriving .home-content {
   animation: home-in 0.28s cubic-bezier(0.2, 0, 0, 1);
@@ -1681,6 +1703,118 @@ video::cue {
 }
 
 /* First run: nothing watched yet and no videos in the folders. */
+/* Search: a YouTube-style pill that stays at the top while the shelves scroll. */
+.home-search {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  padding: 12px var(--home-gutter) 8px;
+  background: var(--bg);
+}
+.home-search-box {
+  display: flex;
+  align-items: center;
+  max-width: 560px;
+  height: 40px;
+  margin: 0 auto;
+  border: 1px solid #303030;
+  border-radius: 20px;
+  background: #121212;
+  transition: border-color 0.1s cubic-bezier(0.4, 0, 1, 1);
+}
+.home-search-box:focus-within {
+  border-color: #1c62b9;
+}
+.home-search-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 100%;
+  color: var(--dim);
+}
+.home-search-icon svg {
+  width: 20px;
+  height: 20px;
+}
+.home-search-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 4px 0 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 15px;
+  unicode-bidi: plaintext;
+}
+.home-search-input::placeholder {
+  color: #888;
+}
+/* Glint draws its own clear button. */
+.home-search-input::-webkit-search-cancel-button {
+  appearance: none;
+}
+.home-search-clear {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  margin-right: 2px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #f1f1f1;
+  cursor: pointer;
+}
+.home-search-clear svg {
+  width: 20px;
+  height: 20px;
+}
+.home-search-clear:hover {
+  background: var(--hover);
+}
+.home-search-clear:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.home-no-match {
+  display: grid;
+  justify-items: center;
+  max-width: 420px;
+  margin: 72px auto 0;
+  text-align: center;
+  animation: card-in 0.3s cubic-bezier(0.2, 0, 0, 1) both;
+}
+.home-no-match-icon {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--dim);
+}
+.home-no-match-icon svg {
+  width: 32px;
+  height: 32px;
+}
+.home-no-match h2 {
+  margin: 20px 0 8px;
+  font-size: 20px;
+  font-weight: 500;
+}
+.home-no-match p {
+  margin: 0 0 20px;
+  color: var(--dim);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
 .home.is-empty .home-content {
   display: grid;
   place-items: center;

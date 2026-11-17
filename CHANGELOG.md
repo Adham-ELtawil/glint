@@ -4,6 +4,17 @@ All notable changes to Glint are listed here. The format is based on [Keep a Cha
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-11-17
+
+### Added
+
+- **Search your videos.** A search box at the top of Home finds videos by name across Continue watching and your folders. Type one or more words: videos that match more of them come first. Press **Ctrl+F** or **/** to jump to the box, and **Esc** or the **×** button to clear it. Suggested by DeathfireD ([#18](https://github.com/Adham-ELtawil/glint/issues/18)).
+
+### Fixed
+
+- **The top bar no longer disappears in theater mode.** In theater mode, or when the window is maximized, the top bar with **Home** and the menus now sits over the video and fades away with the player controls. Move the mouse to bring it back. It stays on screen while the video is paused. Thanks to DeathfireD for reporting this ([#16](https://github.com/Adham-ELtawil/glint/issues/16)).
+- Right-click on a video now has a **Home** item, and **Backspace** still takes you back to Home from anywhere in the player.
+
 ## [0.2.1] - 2026-11-15
 
 ### Added
@@ -138,7 +149,8 @@ All notable changes to Glint are listed here. The format is based on [Keep a Cha
 - Saved position, volume, mute, and speed for each file.
 - NSIS installer with file associations and WebView2 bootstrapper.
 
-[Unreleased]: https://github.com/Adham-ELtawil/glint/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/Adham-ELtawil/glint/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/Adham-ELtawil/glint/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/Adham-ELtawil/glint/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/Adham-ELtawil/glint/compare/v0.1.7...v0.2.0
 [0.1.7]: https://github.com/Adham-ELtawil/glint/compare/v0.1.6...v0.1.7

@@ -129,6 +129,8 @@ export class PlayerView {
   private homeBtn!: HTMLButtonElement;
   stage!: HTMLElement;
   private homeActive = false;
+  /** The pointer is over the top bar, which keeps it (and the controls) up. */
+  private menubarHover = false;
   private menuButtons: Record<MenuName, HTMLButtonElement> = {
     file: null!,
     playback: null!,
@@ -700,6 +702,17 @@ export class PlayerView {
 
     this.player.addEventListener("pointermove", (event) => this.onPointerMove(event));
     this.player.addEventListener("pointerleave", () => this.scheduleHide());
+    // In theater mode the top bar floats over the video; reaching for it
+    // keeps it on screen until the pointer leaves.
+    const menubar = this.root.querySelector<HTMLElement>(".menubar");
+    menubar?.addEventListener("pointerenter", () => {
+      this.menubarHover = true;
+      if (this.floatingMenubar()) this.wakeControls();
+    });
+    menubar?.addEventListener("pointerleave", () => {
+      this.menubarHover = false;
+      this.scheduleHide();
+    });
 
     document.addEventListener("pointerdown", (event) => {
       const target = event.target;
@@ -1253,11 +1266,17 @@ export class PlayerView {
         "F",
         run(() => this.actions.toggleFullscreen()),
       ),
+      separator(),
+      menuItem(
+        "Home",
+        "Backspace",
+        run(() => this.actions.goHome()),
+      ),
     );
     this.context.hidden = false;
     const rect = this.player.getBoundingClientRect();
     const width = 220;
-    const height = 180;
+    const height = 226;
     const left = Math.min(rect.width - width - 8, Math.max(8, x - rect.left));
     const top = Math.min(rect.height - height - 8, Math.max(8, y - rect.top));
     this.context.style.left = `${left}px`;
@@ -1293,11 +1312,23 @@ export class PlayerView {
     const hide = !visible && Boolean(this.state?.playing) && !this.pointerIdleBlocked();
     const wasHidden = this.player.classList.contains("controls-hidden");
     this.player.classList.toggle("controls-hidden", hide);
+    // The floating theater-mode top bar hides and shows with the controls.
+    this.root.classList.toggle("is-idle", hide);
     if (hide && !wasHidden) this.suppressPointerUntil = Date.now() + 200;
   }
 
   private pointerIdleBlocked(): boolean {
-    return this.isOverlayOpen() || this.scrubbing || this.isVolumeDragging();
+    return (
+      this.isOverlayOpen() ||
+      this.scrubbing ||
+      this.isVolumeDragging() ||
+      (this.menubarHover && this.floatingMenubar())
+    );
+  }
+
+  /** Theater mode on the player: the top bar floats over the video. */
+  private floatingMenubar(): boolean {
+    return Boolean(this.state?.theater) && !this.state?.fullscreen && !this.homeActive;
   }
 }
 

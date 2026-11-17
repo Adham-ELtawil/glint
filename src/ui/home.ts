@@ -4,6 +4,8 @@ import { badgeTime, extensionLabel, fileSize, relativeTime, titleOf } from "../h
 import { collapsedCount, columnsFor, gutterFor } from "../home/layout";
 import type { LibraryFolder, LibraryVideo } from "../home/library";
 import { pathKey } from "../home/model";
+import { searchItems, searchTerms } from "../home/search";
+import { isTypingTarget } from "../player/shortcuts";
 import type { Thumb } from "../home/thumbnails";
 import { brandMarkLarge, icon, type IconName } from "./icons";
 
@@ -74,6 +76,10 @@ export class HomeView {
   private menuReturnFocus: HTMLElement | null = null;
   private readonly toastEl: HTMLElement;
   private toastTimer = 0;
+  private readonly searchBar: HTMLElement;
+  private readonly searchInput: HTMLInputElement;
+  private readonly searchClear: HTMLButtonElement;
+  private query = "";
 
   constructor(
     private readonly actions: HomeActions,
@@ -83,7 +89,12 @@ export class HomeView {
     this.root.hidden = true;
     this.root.setAttribute("aria-label", "Home");
     this.content = el("div", "home-content");
-    this.root.append(this.content);
+    this.searchBar = el("div", "home-search");
+    this.searchBar.setAttribute("role", "search");
+    this.searchInput = el("input", "home-search-input");
+    this.searchClear = iconButton("close", "Clear search", "home-search-clear");
+    this.buildSearch();
+    this.root.append(this.searchBar, this.content);
     this.menu = el("div", "context home-menu");
     this.menu.hidden = true;
     this.menu.setAttribute("role", "menu");
@@ -110,6 +121,25 @@ export class HomeView {
       if (!(event.target instanceof Element) || !event.target.closest(".card")) {
         event.preventDefault();
       }
+    });
+    // Ctrl+F or / jumps to the search box, like YouTube's /.
+    window.addEventListener("keydown", (event) => {
+      if (!this.visible || !this.root.isConnected || this.dialog || this.searchBar.hidden) return;
+      if (event.defaultPrevented) return;
+      const find =
+        (event.ctrlKey || event.metaKey) &&
+        !event.altKey &&
+        !event.shiftKey &&
+        event.key.toLowerCase() === "f";
+      const slash =
+        event.key === "/" &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !event.altKey &&
+        !isTypingTarget(event.target);
+      if (!find && !slash) return;
+      event.preventDefault();
+      this.focusSearch();
     });
     document.addEventListener("pointerdown", (event) => {
       const target = event.target;
@@ -240,10 +270,29 @@ export class HomeView {
     const libraryCount = model.sections.reduce((sum, section) => sum + section.videos.length, 0);
     const isEmpty = !hasHistory && libraryCount === 0 && !model.scanning;
     this.root.classList.toggle("is-empty", isEmpty);
+    // Nothing to search on a first run; a stale query must not linger hidden.
+    this.searchBar.hidden = isEmpty;
+    if (isEmpty && this.query) this.setQuery("", false);
+    const searching = searchTerms(this.query).length > 0;
+    this.root.classList.toggle("is-searching", searching);
     const live = new Set<string>();
 
     if (isEmpty) {
       blocks.push(this.buildEmpty(model));
+    } else if (searching) {
+      const history = searchItems(model.history, this.query, (item) =>
+        titleOf(item.entry.filename),
+      );
+      if (history.length > 0) blocks.push(this.buildHistory(model, live, history));
+      for (const section of model.sections) {
+        const videos = searchItems(section.videos, this.query, (video) => titleOf(video.filename));
+        if (videos.length > 0) {
+          blocks.push(this.buildSection(model, { ...section, videos }, live, true));
+        }
+      }
+      if (blocks.length === 0) {
+        blocks.push(model.scanning ? skeletonShelf(this.columns) : this.buildNoMatches());
+      }
     } else {
       if (hasHistory) blocks.push(this.buildHistory(model, live));
       if (model.scanning && model.sections.length === 0) blocks.push(skeletonShelf(this.columns));
@@ -254,6 +303,80 @@ export class HomeView {
     for (const key of [...this.cards.keys()]) {
       if (!live.has(key)) this.cards.delete(key);
     }
+  }
+
+  /** The current search text. */
+  get searchQuery(): string {
+    return this.query;
+  }
+
+  /** Put the cursor in the search box. */
+  focusSearch(): void {
+    if (this.searchBar.hidden) return;
+    this.searchInput.focus({ preventScroll: true });
+    this.searchInput.select();
+    this.root.scrollTo?.({ top: 0 });
+  }
+
+  private buildSearch(): void {
+    const glyph = el("span", "home-search-icon");
+    glyph.innerHTML = icon("search");
+    const input = this.searchInput;
+    input.type = "search";
+    input.placeholder = "Search your videos";
+    input.setAttribute("aria-label", "Search your videos (Ctrl+F)");
+    input.autocomplete = "off";
+    input.spellcheck = false;
+    input.dir = "auto";
+    input.addEventListener("input", () => this.setQuery(input.value));
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        if (input.value) this.setQuery("");
+        else input.blur();
+      } else if (event.key === "ArrowDown" || event.key === "Enter") {
+        const first = this.content.querySelector<HTMLElement>(".card-main");
+        if (!first) return;
+        event.preventDefault();
+        first.focus({ preventScroll: false });
+      }
+    });
+    this.searchClear.hidden = true;
+    this.searchClear.addEventListener("click", () => {
+      this.setQuery("");
+      input.focus({ preventScroll: true });
+    });
+    const box = el("div", "home-search-box");
+    box.append(glyph, input, this.searchClear);
+    this.searchBar.append(box);
+  }
+
+  private setQuery(value: string, render = true): void {
+    if (this.searchInput.value !== value) this.searchInput.value = value;
+    this.searchClear.hidden = value === "";
+    if (value === this.query) return;
+    this.query = value;
+    if (render && this.model) this.render(this.model);
+  }
+
+  private buildNoMatches(): HTMLElement {
+    const wrap = el("div", "home-no-match");
+    wrap.setAttribute("role", "status");
+    const mark = el("div", "home-no-match-icon");
+    mark.innerHTML = icon("search");
+    const title = el("h2");
+    title.textContent = "No videos match";
+    const copy = el("p");
+    copy.dir = "auto";
+    copy.textContent = `Nothing on Home matches \u201c${this.query.trim()}\u201d. Try another word.`;
+    const clear = textButton("Clear search", "home-btn is-outline");
+    clear.addEventListener("click", () => {
+      this.setQuery("");
+      this.searchInput.focus({ preventScroll: true });
+    });
+    wrap.append(mark, title, copy, clear);
+    return wrap;
   }
 
   /** Focus the first card, e.g. after arriving with the keyboard. */
@@ -274,9 +397,14 @@ export class HomeView {
     }
   }
 
-  private buildHistory(model: HomeModel, live: Set<string>): HTMLElement {
+  private buildHistory(
+    model: HomeModel,
+    live: Set<string>,
+    items: HomeHistoryItem[] = model.history,
+  ): HTMLElement {
     const now = Date.now();
-    const cards = model.history.map((item) => {
+    const searching = items !== model.history;
+    const cards = items.map((item) => {
       const { entry } = item;
       const folder = parentName(entry.path);
       const when = relativeTime(entry.watchedAt, now);
@@ -300,16 +428,23 @@ export class HomeView {
     return this.buildShelf({
       id: "history",
       title: "Continue watching",
-      subtitle: "",
+      subtitle: searching ? matchCount(cards.length) : "",
       titleAttr: "",
-      actions: [clear],
+      // Clearing all history from a filtered list would surprise.
+      actions: searching ? [] : [clear],
       cards,
       live,
       note: null,
+      showAll: searching,
     });
   }
 
-  private buildSection(model: HomeModel, section: HomeSection, live: Set<string>): HTMLElement {
+  private buildSection(
+    model: HomeModel,
+    section: HomeSection,
+    live: Set<string>,
+    searching = false,
+  ): HTMLElement {
     const history = new Map(model.history.map((item) => [pathKey(item.entry.path), item.entry]));
     const now = Date.now();
     const cards = section.videos.map((video) => {
@@ -352,11 +487,15 @@ export class HomeView {
       );
     });
     const count = section.videos.length;
-    const subtitle = section.folder.exists
-      ? `${count} video${count === 1 ? "" : "s"}${section.truncated ? " · newest shown" : ""}`
-      : "Folder not found";
+    const subtitle = searching
+      ? matchCount(count)
+      : section.folder.exists
+        ? `${count} video${count === 1 ? "" : "s"}${section.truncated ? " · newest shown" : ""}`
+        : "Folder not found";
     let note: string | null = null;
-    if (!section.folder.exists) {
+    if (searching) {
+      note = null;
+    } else if (!section.folder.exists) {
       note =
         "This folder isn't available. It may have been moved, or be on a drive that isn't connected.";
     } else if (count === 0) {
@@ -371,6 +510,7 @@ export class HomeView {
       cards,
       live,
       note,
+      showAll: searching,
     });
   }
 
@@ -383,6 +523,8 @@ export class HomeView {
     cards: CardData[];
     live: Set<string>;
     note: string | null;
+    /** Search results show every match, not a collapsed shelf. */
+    showAll?: boolean;
   }): HTMLElement {
     const shelf = el("section", "shelf");
     shelf.dataset.shelf = options.id;
@@ -412,7 +554,7 @@ export class HomeView {
     if (options.cards.length === 0) return shelf;
 
     const limit = collapsedCount(this.columns);
-    const open = this.expanded.has(options.id);
+    const open = this.expanded.has(options.id) || options.showAll === true;
     const shown = open ? options.cards : options.cards.slice(0, limit);
     const grid = el("div", "grid");
     grid.setAttribute("role", "list");
@@ -434,7 +576,7 @@ export class HomeView {
     }
     shelf.append(grid);
 
-    if (options.cards.length > limit) {
+    if (options.cards.length > limit && !options.showAll) {
       const more = el("div", "shelf-more");
       const toggle = el("button", "home-btn is-more");
       toggle.type = "button";
@@ -845,6 +987,10 @@ function el<K extends keyof HTMLElementTagNameMap>(
   const node = document.createElement(tag);
   if (className) node.className = className;
   return node;
+}
+
+function matchCount(count: number): string {
+  return `${count} match${count === 1 ? "" : "es"}`;
 }
 
 function textButton(label: string, className: string): HTMLButtonElement {
