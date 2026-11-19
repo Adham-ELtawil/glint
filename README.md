@@ -37,6 +37,7 @@ Open a video and the same control bar, shortcuts, and animations you already kno
 - [Roadmap](#roadmap)
 - [Development](#development)
 - [Contributing](#contributing)
+- [Privacy and code signing policy](#privacy-and-code-signing-policy)
 - [License](#license)
 
 ## Features
@@ -63,6 +64,8 @@ Open a video and the same control bar, shortcuts, and animations you already kno
 
 > [!IMPORTANT]
 > **"Windows protected your PC."** Glint's installer isn't code-signed yet, so the first time you run it Microsoft Defender SmartScreen shows this blue warning. That's expected for new, unsigned apps, not a sign that something is wrong. Click **More info**, then **Run anyway**.
+>
+> We are applying for free code signing provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org). Until a signed release is out, this warning can still appear. See the [code signing policy](CODE_SIGNING.md).
 >
 > To check the download first, compare it with the SHA-256 in the release notes (from 0.1.5 on there is also a `.sha256` file). In PowerShell: `Get-FileHash .\Glint_<version>_x64-setup.exe`. All of Glint's source code is in this repository, and releases are built from it by the [Release workflow](.github/workflows/release.yml).
 
@@ -161,7 +164,7 @@ FFmpeg is licensed under the [LGPL 2.1](src-tauri/licenses/FFmpeg-LGPL-2.1.txt);
 ## FAQ and troubleshooting
 
 **Windows says "Windows protected your PC".**
-The installer isn't code-signed yet. Click **More info → Run anyway**. See [Download and install](#download-and-install).
+The installer isn't code-signed yet. Click **More info → Run anyway**. See [Download and install](#download-and-install) and the [code signing policy](CODE_SIGNING.md).
 
 **"Another program is currently using this file" when I run the installer.**
 Windows is still scanning or saving the download. Wait a few seconds and run it again. If you are updating, close Glint first.
@@ -189,7 +192,7 @@ The folder was moved or renamed, or it is on a drive that isn't connected. Its s
 - **More from FFmpeg:** choosing the audio track, and subtitles stored inside MKV files.
 - **Better playlists:** a visible queue, previous, and shuffle.
 - **Thumbnail previews** on the progress bar when you hover.
-- **A signed installer**, so SmartScreen stops warning.
+- **A signed installer**, so SmartScreen stops warning. We are applying to the [SignPath Foundation](https://signpath.org) for this.
 
 Not planned for now: audio-only files, picture-in-picture, a playlist editor, and remembering the window size.
 
@@ -380,6 +383,12 @@ The icon artwork lives in `src-tauri/icons/source/`: `glint.svg` is the master, 
 ## Contributing
 
 Bug reports, ideas, and pull requests are welcome. Open an [issue](https://github.com/Adham-ELtawil/glint/issues/new/choose) for a bug or an idea, and see [CONTRIBUTING.md](CONTRIBUTING.md) for setup, tests, and commit style. Please follow the [Code of Conduct](CODE_OF_CONDUCT.md), and report security problems privately as described in [SECURITY.md](SECURITY.md).
+
+## Privacy and code signing policy
+
+Glint has no accounts, ads, or telemetry. History and settings stay on your PC. The only network request it makes on its own is an update check against this project's GitHub Releases. Details are in the [privacy policy](PRIVACY.md).
+
+**[Code signing policy](CODE_SIGNING.md).** We are applying to the SignPath Foundation so that future Windows installers can be Authenticode-signed. Current releases are not yet signed. Free code signing provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org).
 
 ## License
 
