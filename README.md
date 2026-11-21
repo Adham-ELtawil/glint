@@ -50,7 +50,8 @@ Open a video and the same control bar, shortcuts, and animations you already kno
 - **Chapters.** Add a `.chapters.json` or `.chapters.vtt` file next to the video and the progress bar splits into chapters.
 - **Folder playlist.** The other videos in the same folder become a playlist. **Next** (Shift+N) plays the next one.
 - **One window.** Opening another file from Explorer sends it to the Glint window that is already open.
-- **Private.** History, thumbnails, and settings stay on your PC. **View → Clear watch history** removes them.
+- **Tags.** Tag your videos (Trip, Family, Snowboarding…) from the right-click menu, with suggestions from the file name, then filter Home by a tag or find videos by tag in search.
+- **Private.** History, tags, thumbnails, and settings stay on your PC. **View → Clear watch history** removes the history.
 - **Automatic updates.** From 0.1.6 on, Glint checks for a new version when it starts and offers to install it in one click. **Help → Check for updates…** checks right away.
 - **Animations always on.** The play/pause animations still run when Windows **Animation effects** is turned off.
 
@@ -89,7 +90,8 @@ Open a video and the same control bar, shortcuts, and animations you already kno
 - **Continue watching** lists the videos you played most recently, newest first, with how far you got. Click a card to resume, or right-click it for **Play from the beginning**. Hover a card and click **×**, or select it and press Delete, to remove it (there is an **Undo**). A video that was moved or deleted shows as unavailable.
 - **Folders.** Each folder gets its own shelf ("From Videos"), newest videos first. Glint looks at the folder and one level of subfolders, and skips hidden and system files. Add more folders with **Add a folder** at the bottom of the home screen or **File → Add folder to Home…**, and remove one from the **⋮** menu on its shelf. Removing a folder from Home doesn't delete anything.
 - **Thumbnails** are made from a frame about 10% into each video the first time it appears, then cached. Formats WebView2 can't decode (such as AVI or WMV) get their thumbnail from Glint's FFmpeg; a file that can't be read at all gets a plain tile with the file type.
-- **Search.** The box at the top of Home finds videos by name in Continue watching and your folders. Type one or more words; videos matching more of them come first. Ctrl+F or `/` jumps to it, and Esc clears it.
+- **Search.** The box at the top of Home finds videos by name or tag in Continue watching and your folders. Type one or more words; videos matching more of them come first. Ctrl+F or `/` jumps to it, and Esc clears it.
+- **Tags.** Right-click a card (or the video while it plays) and choose **Add tags…** / **Edit tags…**. Type tags separated by commas and press Enter, or click a suggestion: Glint suggests words from the file name, leaving out the extension, numbers, years, and release junk such as `1080p`, `x264` or `WEBRip`, and also offers tags you already use. Click **×** on a tag to remove it, Backspace in the empty box removes the last one, Save (or Enter on an empty box) keeps your changes, and Esc cancels. A video's first few tags show on its card. Once anything is tagged, a row of chips under the search box filters Home by tag: click a tag to show only those videos, click it again or **All** to show everything. Filtering and search work together. Tags are kept when you clear watch history or remove a video from Continue watching; they are tied to the file's path, so a moved or renamed file starts untagged.
 - Use the arrow keys to move between cards, Enter to play, and the Menu key or Shift+F10 for the card's menu.
 
 **Playlist.** Glint lists the other videos in the same folder in natural order (`2.mp4` before `10.mp4`). At the end of a video, the end screen offers **Replay**, and **Up next** when there is another video in the folder.
@@ -179,10 +181,10 @@ Update to 0.1.2 or newer. Older versions turned off animations when Windows **An
 The subtitle file must have the same name as the video (`movie.mp4` → `movie.srt` or `movie.en.srt`) and be in the same folder. Otherwise load it from **File → Open subtitle…**. Only `.srt` and `.vtt` are supported.
 
 **Where are my settings and history stored?**
-Only on your PC. Saved positions, settings, and watch history are in Glint's WebView2 storage. The list of home-screen folders is in `library.json` in Glint's app data folder (`%APPDATA%\app.glint.player`), and thumbnails are cached in `%LOCALAPPDATA%\app.glint.player\thumbnails` (the newest 2,000 are kept). Glint has no accounts and no telemetry, and it doesn't upload your videos, history, or settings anywhere.
+Only on your PC. Saved positions, settings, tags, and watch history are in Glint's WebView2 storage. The list of home-screen folders is in `library.json` in Glint's app data folder (`%APPDATA%\app.glint.player`), and thumbnails are cached in `%LOCALAPPDATA%\app.glint.player\thumbnails` (the newest 2,000 are kept). Glint has no accounts and no telemetry, and it doesn't upload your videos, history, or settings anywhere.
 
 **How do I clear my watch history?**
-**View → Clear watch history…**, or **Clear history** next to Continue watching. This removes the history and saved positions but keeps your volume and speed settings, the folder list, and your video files. To remove one video, use the **×** on its card.
+**View → Clear watch history…**, or **Clear history** next to Continue watching. This removes the history and saved positions but keeps your volume and speed settings, your tags, the folder list, and your video files. To remove one video, use the **×** on its card.
 
 **A folder I added says "Folder not found".**
 The folder was moved or renamed, or it is on a drive that isn't connected. Its shelf comes back when the folder does. Use the **⋮** menu to remove it from Home.
@@ -301,6 +303,8 @@ src/
     chapters.ts, playlist.ts, rates.ts, time.ts, errors.ts, …
   home/                 Home screen data, no DOM
     history-store.ts      Watch history (Continue watching)
+    tags.ts               Tags per file, and tag suggestions from file names
+    search.ts             Home search and the tag filter
     library.ts            Folder and scan types, the LibraryApi bridge
     thumbnails.ts         Lazy thumbnail grabbing and caching
     model.ts, layout.ts, format.ts
@@ -310,6 +314,7 @@ src/
   ui/
     view.ts               PlayerView: the DOM for the YouTube-style controls
     home.ts               HomeView: the home screen's shelves, cards, and menus
+    tag-dialog.ts         The Edit tags dialog
     icons.ts              SVG icons
   styles.css
 src-tauri/
@@ -351,7 +356,7 @@ File menu, drag-and-drop, Explorer / CLI
 - **One engine seam.** The controller only talks to the `PlaybackBackend` interface in `src/player/backend.ts`, never to a `<video>` element. `MediaSource` carries both a `url` (for HTML5) and a `path` (for libmpv). Adding libmpv means writing one new backend and returning it from `createBackend()`. The controller, shortcuts, and UI stay the same.
 - **Why videos are served from 127.0.0.1.** A small Rust server (`media_server.rs`) listens on a random local port and answers HTTP `Range` requests, so seeking in large files is fast. Bytes are not transcoded. Each opened file gets an unguessable token, only opened files are served, and the server stops with the app. Tauri's `asset://` protocol was not reliable for seeking large videos.
 - **Single instance.** `tauri-plugin-single-instance` forwards files from a second launch to the open window.
-- **Saved state.** `localStorage` key `glint.player.v1`, keyed by the file's full path. Data from the old `lumen.player.v1` key is migrated on startup. Watch history is `glint.history.v1`.
+- **Saved state.** `localStorage` key `glint.player.v1`, keyed by the file's full path. Data from the old `lumen.player.v1` key is migrated on startup. Watch history is `glint.history.v1`, and tags are `glint.tags.v1` (kept separate so clearing history leaves them alone).
 - **Home screen.** Rust keeps the folder list in `library.json` in the app config folder and scans folders on a background thread (one level deep, at most 400 videos per folder, hidden and system files skipped). Thumbnails are grabbed in the webview by drawing a hidden `<video>` to a canvas, then saved by Rust as JPEGs in the app cache folder, keyed by the file's path, size, and modified time, so an edited file gets a new thumbnail.
 - **Updates.** `tauri-plugin-updater`, driven from Rust (`updates.rs`). A few seconds after startup the app reads `latest.json` from the latest GitHub release. If it lists a newer version, a card offers it; **Update** downloads the installer, checks its signature against the public key in `tauri.conf.json`, and runs it in passive mode, which restarts Glint. Failed or offline checks show nothing. To test against another server, set `GLINT_UPDATE_ENDPOINT` to an `https` URL of a `latest.json`. The signature check still applies.
 - **Autoplay.** WebView2 starts with `--autoplay-policy=no-user-gesture-required`, so a file opened from Explorer plays right away.

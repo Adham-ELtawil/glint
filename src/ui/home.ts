@@ -4,7 +4,8 @@ import { badgeTime, extensionLabel, fileSize, relativeTime, titleOf } from "../h
 import { collapsedCount, columnsFor, gutterFor } from "../home/layout";
 import type { LibraryFolder, LibraryVideo } from "../home/library";
 import { pathKey } from "../home/model";
-import { searchItems, searchTerms } from "../home/search";
+import { filterByTag, searchItems, searchTerms, searchText } from "../home/search";
+import { tagKey } from "../home/tags";
 import { isTypingTarget } from "../player/shortcuts";
 import type { Thumb } from "../home/thumbnails";
 import { brandMarkLarge, icon, type IconName } from "./icons";
@@ -16,6 +17,8 @@ export interface HomeActions {
   removeFolder(path: string): void;
   removeHistory(id: string): void;
   clearHistory(): void;
+  /** Open the tag editor for a video. */
+  editTags?(path: string, filename: string): void;
 }
 
 export interface HomeHistoryItem {
@@ -37,6 +40,8 @@ export interface HomeModel {
   sections: HomeSection[];
   /** The first scan has not answered yet. */
   scanning: boolean;
+  /** pathKey → the video's tags. */
+  tags?: ReadonlyMap<string, readonly string[]>;
 }
 
 export interface ThumbSource {
@@ -53,7 +58,11 @@ interface CardData {
   duration: number;
   meta: string[];
   historyId: string | null;
+  tags: readonly string[];
 }
+
+/** Tag chips shown on a card before "+N". */
+export const CARD_TAGS_SHOWN = 3;
 
 /**
  * The home screen: "Continue watching" from history, then one shelf per
@@ -80,6 +89,8 @@ export class HomeView {
   private readonly searchInput: HTMLInputElement;
   private readonly searchClear: HTMLButtonElement;
   private query = "";
+  private readonly tagBar: HTMLElement;
+  private activeTag: string | null = null;
 
   constructor(
     private readonly actions: HomeActions,
@@ -93,7 +104,12 @@ export class HomeView {
     this.searchBar.setAttribute("role", "search");
     this.searchInput = el("input", "home-search-input");
     this.searchClear = iconButton("close", "Clear search", "home-search-clear");
+    this.tagBar = el("div", "home-tags");
+    this.tagBar.setAttribute("role", "toolbar");
+    this.tagBar.setAttribute("aria-label", "Filter by tag");
+    this.tagBar.hidden = true;
     this.buildSearch();
+    this.searchBar.append(this.tagBar);
     this.root.append(this.searchBar, this.content);
     this.menu = el("div", "context home-menu");
     this.menu.hidden = true;
@@ -125,7 +141,7 @@ export class HomeView {
     // Ctrl+F or / jumps to the search box, like YouTube's /.
     window.addEventListener("keydown", (event) => {
       if (!this.visible || !this.root.isConnected || this.dialog || this.searchBar.hidden) return;
-      if (event.defaultPrevented) return;
+      if (event.defaultPrevented || document.querySelector(".glint-modal")) return;
       const find =
         (event.ctrlKey || event.metaKey) &&
         !event.altKey &&
@@ -227,7 +243,7 @@ export class HomeView {
     title.textContent = "Clear watch history?";
     const body = el("p");
     body.textContent =
-      "Continue watching and saved positions will be removed from this PC. Your video files aren't touched.";
+      "Continue watching and saved positions will be removed from this PC. Your video files aren't touched. Tags you added stay.";
     const row = el("div", "home-dialog-actions");
     const cancel = textButton("Cancel", "home-btn is-ghost");
     const confirm = textButton("Clear history", "home-btn is-primary");
@@ -273,19 +289,34 @@ export class HomeView {
     // Nothing to search on a first run; a stale query must not linger hidden.
     this.searchBar.hidden = isEmpty;
     if (isEmpty && this.query) this.setQuery("", false);
-    const searching = searchTerms(this.query).length > 0;
+    const tagsOf = (path: string) => model.tags?.get(pathKey(path)) ?? [];
+    this.paintTagBar(model, isEmpty);
+    const tag = this.activeTag;
+    const searching = searchTerms(this.query).length > 0 || tag != null;
     this.root.classList.toggle("is-searching", searching);
     const live = new Set<string>();
 
     if (isEmpty) {
       blocks.push(this.buildEmpty(model));
     } else if (searching) {
-      const history = searchItems(model.history, this.query, (item) =>
-        titleOf(item.entry.filename),
+      const pick = <T>(items: readonly T[], path: (item: T) => string, name: (item: T) => string) =>
+        searchItems(
+          filterByTag(items, tag, (item) => tagsOf(path(item))),
+          this.query,
+          (item) => searchText(titleOf(name(item)), tagsOf(path(item))),
+        );
+      const history = pick(
+        model.history,
+        (item) => item.entry.path,
+        (item) => item.entry.filename,
       );
       if (history.length > 0) blocks.push(this.buildHistory(model, live, history));
       for (const section of model.sections) {
-        const videos = searchItems(section.videos, this.query, (video) => titleOf(video.filename));
+        const videos = pick(
+          section.videos,
+          (video) => video.path,
+          (video) => video.filename,
+        );
         if (videos.length > 0) {
           blocks.push(this.buildSection(model, { ...section, videos }, live, true));
         }
@@ -360,6 +391,73 @@ export class HomeView {
     if (render && this.model) this.render(this.model);
   }
 
+  /** The tag the shelves are filtered by, or null. */
+  get tagFilter(): string | null {
+    return this.activeTag;
+  }
+
+  /** Show only videos with this tag (null shows everything again). */
+  setTagFilter(tag: string | null): void {
+    const next = tag && tag.trim() ? tag : null;
+    if (next === this.activeTag) return;
+    this.activeTag = next;
+    if (this.model) this.render(this.model);
+  }
+
+  /** YouTube-style chips under the search box: All, then every tag. */
+  private paintTagBar(model: HomeModel, isEmpty: boolean): void {
+    const counts = new Map<string, { tag: string; count: number }>();
+    for (const tags of model.tags?.values() ?? []) {
+      for (const tag of tags) {
+        const key = tagKey(tag);
+        const known = counts.get(key);
+        if (known) known.count += 1;
+        else counts.set(key, { tag, count: 1 });
+      }
+    }
+    const all = [...counts.values()].sort(
+      (a, b) => b.count - a.count || a.tag.localeCompare(b.tag, undefined, { sensitivity: "base" }),
+    );
+    // A filter for a tag that no longer exists would hide everything.
+    if (this.activeTag && !counts.has(tagKey(this.activeTag))) this.activeTag = null;
+    const hidden = isEmpty || all.length === 0;
+    this.tagBar.hidden = hidden;
+    this.root.classList.toggle("has-tags", !hidden);
+    if (hidden) {
+      this.tagBar.replaceChildren();
+      return;
+    }
+    const activeKey = this.activeTag ? tagKey(this.activeTag) : null;
+    const focusedKey =
+      document.activeElement instanceof HTMLElement && this.tagBar.contains(document.activeElement)
+        ? (document.activeElement.dataset.tag ?? "")
+        : null;
+    const chip = (label: string, key: string, on: boolean, run: () => void) => {
+      const node = textButton(label, `home-tag${on ? " is-active" : ""}`);
+      node.dataset.tag = key;
+      node.dir = "auto";
+      node.setAttribute("aria-pressed", on ? "true" : "false");
+      node.addEventListener("click", run);
+      return node;
+    };
+    const chips = [
+      chip("All", "", activeKey == null, () => this.setTagFilter(null)),
+      ...all.map(({ tag }) => {
+        const key = tagKey(tag);
+        const on = key === activeKey;
+        const node = chip(tag, key, on, () => this.setTagFilter(on ? null : tag));
+        node.title = on
+          ? `Showing videos tagged ${tag}. Click to show all`
+          : `Show videos tagged ${tag}`;
+        return node;
+      }),
+    ];
+    this.tagBar.replaceChildren(...chips);
+    if (focusedKey != null) {
+      chips.find((node) => node.dataset.tag === focusedKey)?.focus({ preventScroll: true });
+    }
+  }
+
   private buildNoMatches(): HTMLElement {
     const wrap = el("div", "home-no-match");
     wrap.setAttribute("role", "status");
@@ -369,10 +467,18 @@ export class HomeView {
     title.textContent = "No videos match";
     const copy = el("p");
     copy.dir = "auto";
-    copy.textContent = `Nothing on Home matches \u201c${this.query.trim()}\u201d. Try another word.`;
-    const clear = textButton("Clear search", "home-btn is-outline");
+    const query = this.query.trim();
+    const tag = this.activeTag;
+    copy.textContent = !tag
+      ? `Nothing on Home matches \u201c${query}\u201d. Try another word.`
+      : query
+        ? `Nothing tagged \u201c${tag}\u201d matches \u201c${query}\u201d.`
+        : `No videos on Home are tagged \u201c${tag}\u201d.`;
+    const clear = textButton(tag ? "Clear filters" : "Clear search", "home-btn is-outline");
     clear.addEventListener("click", () => {
-      this.setQuery("");
+      this.activeTag = null;
+      this.setQuery("", false);
+      if (this.model) this.render(this.model);
       this.searchInput.focus({ preventScroll: true });
     });
     wrap.append(mark, title, copy, clear);
@@ -403,7 +509,7 @@ export class HomeView {
     items: HomeHistoryItem[] = model.history,
   ): HTMLElement {
     const now = Date.now();
-    const searching = items !== model.history;
+    const searching = items !== model.history || this.activeTag != null;
     const cards = items.map((item) => {
       const { entry } = item;
       const folder = parentName(entry.path);
@@ -421,6 +527,7 @@ export class HomeView {
         duration: entry.duration,
         meta,
         historyId: entry.id,
+        tags: tagsFor(model, entry.path),
       } satisfies CardData;
     });
     const clear = textButton("Clear history", "home-btn is-text");
@@ -461,6 +568,7 @@ export class HomeView {
         duration: watched?.duration ?? 0,
         meta: [kind, relativeTime(video.modifiedMs, now)].filter(Boolean),
         historyId: null,
+        tags: tagsFor(model, video.path),
       } satisfies CardData;
     });
     const more = iconButton("more", "Folder options", "home-icon-btn");
@@ -607,6 +715,7 @@ export class HomeView {
       Math.round(watchedRatio(data.position, data.duration) * 1000),
       data.duration > 0 ? Math.round(data.duration) : 0,
       data.meta,
+      data.tags,
     ]);
     const cached = this.cards.get(data.key);
     if (cached && cached.signature === signature) return cached.node;
@@ -626,9 +735,10 @@ export class HomeView {
     main.type = "button";
     const ratio = watchedRatio(data.position, data.duration);
     const resumable = ratio > 0 && ratio < 1;
+    const tagged = data.tags.length > 0 ? `. Tags: ${data.tags.join(", ")}` : "";
     main.setAttribute(
       "aria-label",
-      `${title}. ${data.meta.join(". ")}${resumable ? `. ${Math.round(ratio * 100)}% watched` : ""}`,
+      `${title}. ${data.meta.join(". ")}${resumable ? `. ${Math.round(ratio * 100)}% watched` : ""}${tagged}`,
     );
     if (!data.available) main.setAttribute("aria-disabled", "true");
 
@@ -672,6 +782,24 @@ export class HomeView {
       meta.textContent = line;
       meta.dir = "auto";
       text.append(meta);
+    }
+    if (data.tags.length > 0) {
+      const row = el("div", "card-tags");
+      row.setAttribute("aria-hidden", "true");
+      for (const tag of data.tags.slice(0, CARD_TAGS_SHOWN)) {
+        const chip = el("span", "card-tag");
+        chip.textContent = tag;
+        chip.dir = "auto";
+        row.append(chip);
+      }
+      const extra = data.tags.length - CARD_TAGS_SHOWN;
+      if (extra > 0) {
+        const more = el("span", "card-tag is-more");
+        more.textContent = `+${extra}`;
+        more.title = data.tags.slice(CARD_TAGS_SHOWN).join(", ");
+        row.append(more);
+      }
+      text.append(row);
     }
     main.append(thumb, text);
     card.append(main);
@@ -822,6 +950,15 @@ export class HomeView {
           ),
         );
       }
+    }
+    if (this.actions.editTags) {
+      if (items.length > 0) items.push(separator());
+      items.push(
+        menuItem(
+          data.tags.length > 0 ? "Edit tags\u2026" : "Add tags\u2026",
+          run(() => this.actions.editTags?.(data.path, data.filename)),
+        ),
+      );
     }
     if (data.historyId) {
       if (items.length > 0) items.push(separator());
@@ -978,6 +1115,10 @@ function skeletonShelf(columns: number): HTMLElement {
   }
   shelf.append(head, grid);
   return shelf;
+}
+
+function tagsFor(model: HomeModel, path: string): readonly string[] {
+  return model.tags?.get(pathKey(path)) ?? [];
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(

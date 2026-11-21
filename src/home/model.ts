@@ -28,6 +28,8 @@ export interface HomeInput {
   folders: LibraryFolder[];
   scans: FolderScan[];
   scanning: boolean;
+  /** pathKey → tags, from the tag store. */
+  tags?: ReadonlyMap<string, readonly string[]>;
 }
 
 export function buildHomeModel(input: HomeInput): HomeModel {
@@ -35,6 +37,7 @@ export function buildHomeModel(input: HomeInput): HomeModel {
   return {
     native: input.native,
     scanning: input.scanning,
+    tags: input.tags ?? new Map(),
     history: input.history.map((entry) => ({
       entry,
       available: input.availability.get(pathKey(entry.path)) ?? true,

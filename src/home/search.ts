@@ -56,3 +56,19 @@ export function searchItems<T>(items: readonly T[], query: string, text: (item: 
 function fold(text: string): string {
   return text.normalize("NFKC").toLocaleLowerCase();
 }
+
+/** What search looks through for a video: its title, then its tags. */
+export function searchText(title: string, tags: readonly string[] = []): string {
+  return [title, ...tags].join("\n");
+}
+
+/** The items carrying `tag` (any case), in their original order; all of them for null. */
+export function filterByTag<T>(
+  items: readonly T[],
+  tag: string | null,
+  tagsOf: (item: T) => readonly string[],
+): T[] {
+  if (!tag) return [...items];
+  const want = fold(tag.trim());
+  return items.filter((item) => tagsOf(item).some((each) => fold(each.trim()) === want));
+}

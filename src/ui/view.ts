@@ -34,6 +34,10 @@ export interface ViewActions {
   addFolder(): void;
   clearHistory(): void;
   checkForUpdates(): void;
+  /** Open the tag editor for the video that is playing. */
+  editTags?(): void;
+  /** Whether that video can carry tags (it has a path on disk). */
+  canEditTags?(): boolean;
 }
 
 /**
@@ -815,6 +819,8 @@ export class PlayerView {
   }
 
   private onKey(event: KeyboardEvent): void {
+    // A dialog (tag editor) owns the keyboard while it is open.
+    if (inModal(event.target)) return;
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "o" && !event.shiftKey) {
       event.preventDefault();
       this.actions.openVideo();
@@ -1267,6 +1273,16 @@ export class PlayerView {
         run(() => this.actions.toggleFullscreen()),
       ),
       separator(),
+      ...(this.actions.editTags
+        ? [
+            menuItem(
+              "Edit tags\u2026",
+              "",
+              run(() => this.actions.editTags?.()),
+              !(this.actions.canEditTags?.() ?? true),
+            ),
+          ]
+        : []),
       menuItem(
         "Home",
         "Backspace",
@@ -1276,7 +1292,7 @@ export class PlayerView {
     this.context.hidden = false;
     const rect = this.player.getBoundingClientRect();
     const width = 220;
-    const height = 226;
+    const height = this.context.offsetHeight || 266;
     const left = Math.min(rect.width - width - 8, Math.max(8, x - rect.left));
     const top = Math.min(rect.height - height - 8, Math.max(8, y - rect.top));
     this.context.style.left = `${left}px`;
@@ -1432,6 +1448,14 @@ function menuItem(
   }
   node.addEventListener("click", () => onClick());
   return node;
+}
+
+function inModal(target: EventTarget | null): boolean {
+  return (
+    typeof Element !== "undefined" &&
+    target instanceof Element &&
+    target.closest(".glint-modal") != null
+  );
 }
 
 function separator(): HTMLElement {
