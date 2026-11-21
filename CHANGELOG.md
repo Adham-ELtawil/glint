@@ -4,10 +4,12 @@ All notable changes to Glint are listed here. The format is based on [Keep a Cha
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-11-21
+
 ### Added
 
-- **Star Glint on GitHub.** After you've used Glint for a while (five days with at least two minutes of watching, and never in the first three days), a small card in the top-right corner asks if you'd like to star Glint on GitHub. It never shows during playback, in fullscreen, or together with an update card. **Not now** asks again only after 30 days and 10 more days of watching, at most three times in total (**×** and **Esc** work like **Not now**). **Don't show again** or **Star on GitHub** means it never asks again. There's also **Help → Star Glint on GitHub**. Everything stays on your computer; nothing is sent anywhere.
-- **Tags.** Right-click a video on Home, or the video that is playing, and choose **Edit tags…** to give it tags like Snowboarding, Trip or Family. Type them separated by commas, press **Enter** to add one, and click **×** to remove one. Glint suggests tags from the file name (it skips things like 1080p, x264 and the year) and offers the tags you already use. Tags show on the video's card, a row of tag chips under the search box filters Continue watching and your folders, and search finds videos by their tags too. Tags stay on your PC, and **Clear watch history** keeps them. Suggested by our community ([#19](https://github.com/Adham-ELtawil/glint/issues/19)).
+- **Tags.** Right-click a video on Home, or the video that is playing, and choose **Edit tags…** to add tags such as Trip or Family. Glint suggests tags from the file name and offers the tags you already use. Tags show on each card, the tag chips under the search box filter Home, and search finds videos by tag. Tags stay on your PC, and clearing watch history keeps them. Suggested by our community ([#19](https://github.com/Adham-ELtawil/glint/issues/19)).
+- **Star Glint on GitHub.** After you have used Glint for a few days, a small card may ask if you would like to star the project. It never appears during playback or in fullscreen, **Not now** waits at least 30 days before asking again, and **Don't show again** turns it off for good. It is also in **Help → Star Glint on GitHub**. Nothing is sent anywhere.
 
 ## [0.2.2] - 2026-11-17
 
@@ -154,7 +156,8 @@ All notable changes to Glint are listed here. The format is based on [Keep a Cha
 - Saved position, volume, mute, and speed for each file.
 - NSIS installer with file associations and WebView2 bootstrapper.
 
-[Unreleased]: https://github.com/Adham-ELtawil/glint/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/Adham-ELtawil/glint/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/Adham-ELtawil/glint/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/Adham-ELtawil/glint/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/Adham-ELtawil/glint/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/Adham-ELtawil/glint/compare/v0.1.7...v0.2.0
