@@ -4,6 +4,7 @@ import {
   loadStarState,
   markDone,
   markShown,
+  markUpdated,
   recordWatchSession,
   shouldShowStar,
   type StarDone,
@@ -81,10 +82,18 @@ export class StarPromptController {
     if (was !== this.visible) this.paint();
   }
 
+  /** Glint was just updated: the first ask may come without waiting. */
+  noteUpdated(): void {
+    if (!this.state) return;
+    this.state = markUpdated(this.state);
+    this.save();
+  }
+
   /** A calm moment: shows the card if this launch and the schedule allow it. */
   offer(): boolean {
     const state = this.state;
-    if (!state || this.open || this.covered || this.shownThisLaunch || !this.counted) return false;
+    if (!state || this.open || this.covered || this.shownThisLaunch) return false;
+    if (!this.counted && !state.updateAsk) return false;
     const now = this.now();
     if (!shouldShowStar(state, now)) return false;
     this.state = markShown(state, now);

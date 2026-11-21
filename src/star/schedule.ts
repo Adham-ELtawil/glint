@@ -10,6 +10,9 @@
  * "Not now" waits {@link SNOOZE_DAYS} days and {@link SNOOZE_SESSIONS} more
  * watch sessions. It appears {@link MAX_SHOWS} times at most, and never again
  * after "Star on GitHub" or "Don't show again".
+ *
+ * Exception: right after someone updates Glint, the first ask may come at
+ * once (no waiting for sessions or days), so existing users see it once.
  */
 
 export const STAR_STORAGE_KEY = "glint.starPrompt.v1";
@@ -40,6 +43,8 @@ export interface StarState {
   /** `sessions` at the moment the card was last shown. */
   sessionsAtLastShow: number;
   done: StarDone | null;
+  /** Set after an update: the first ask can come right away. */
+  updateAsk: boolean;
 }
 
 export function initialStarState(now: number): StarState {
@@ -52,6 +57,7 @@ export function initialStarState(now: number): StarState {
     lastShownAt: null,
     sessionsAtLastShow: 0,
     done: null,
+    updateAsk: false,
   };
 }
 
@@ -70,6 +76,7 @@ export function loadStarState(raw: string | null, now: number): StarState {
       lastShownAt: isNum(data.lastShownAt) ? data.lastShownAt : null,
       sessionsAtLastShow: isNum(data.sessionsAtLastShow) ? data.sessionsAtLastShow : 0,
       done: data.done === "starred" || data.done === "never" ? data.done : null,
+      updateAsk: data.updateAsk === true,
     };
   } catch {
     return initialStarState(now);
@@ -93,6 +100,7 @@ export function recordWatchSession(state: StarState, now: number): StarState {
 export function shouldShowStar(state: StarState, now: number): boolean {
   if (state.done || state.shows >= MAX_SHOWS) return false;
   if (state.shows === 0 || state.lastShownAt == null) {
+    if (state.updateAsk) return true;
     return state.sessions >= FIRST_SESSIONS && now - state.firstRun >= FIRST_DAYS * DAY_MS;
   }
   return (
@@ -107,6 +115,12 @@ export function shouldShowStar(state: StarState, now: number): boolean {
  */
 export function markShown(state: StarState, now: number): StarState {
   return { ...state, shows: state.shows + 1, lastShownAt: now, sessionsAtLastShow: state.sessions };
+}
+
+/** After an update: lets the first ask come right away, once. */
+export function markUpdated(state: StarState): StarState {
+  if (state.done || state.shows > 0) return state;
+  return { ...state, updateAsk: true };
 }
 
 export function markDone(state: StarState, reason: StarDone): StarState {

@@ -111,6 +111,8 @@ export async function start(root: HTMLElement): Promise<void> {
           updateToast.render(state);
           updateShown = state.kind !== "idle";
           star.setCovered(updateShown || fullscreen);
+          // Once the update card is closed, Home is a calm moment again.
+          if (!updateShown && home.visible) star.offer();
         },
         // The installer quits Glint, so save the position first.
         beforeInstall: () => player.persist(),
@@ -197,7 +199,11 @@ export async function start(root: HTMLElement): Promise<void> {
     }
     // Once after an update: what changed, from the changelog bundled with this build.
     const whatsNew = takeWhatsNew(localStorage, APP_VERSION, changelog);
-    if (whatsNew) updates?.showWhatsNew(whatsNew.version, whatsNew.notes);
+    if (whatsNew) {
+      // Existing users get the star card once, after the What's new card closes.
+      star.noteUpdated();
+      updates?.showWhatsNew(whatsNew.version, whatsNew.notes);
+    }
     updates?.scheduleAutoCheck();
     const launch = await desktop.takeLaunchFiles();
     if (launch.length > 0) await openPaths(launch);

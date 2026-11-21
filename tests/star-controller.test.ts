@@ -156,3 +156,60 @@ describe("StarPromptController", () => {
     expect(star.offer()).toBe(false);
   });
 });
+
+describe("star prompt after an update", () => {
+  function make(initial?: StarState) {
+    const storage = memoryStorage(initial);
+    const render = vi.fn();
+    const star = new StarPromptController(storage, { render, openRepo: vi.fn(), now: () => T0 });
+    const saved = () => JSON.parse(storage.data.get(STAR_STORAGE_KEY)!) as StarState;
+    return { star, render, saved };
+  }
+
+  it("shows right away on the first calm moment after an update", () => {
+    const { star, render } = make();
+    star.noteUpdated();
+    expect(star.offer()).toBe(true);
+    expect(render).toHaveBeenLastCalledWith(true, false);
+  });
+
+  it("waits for the update card to close", () => {
+    const { star } = make();
+    star.noteUpdated();
+    star.setCovered(true);
+    expect(star.offer()).toBe(false);
+    star.setCovered(false);
+    expect(star.offer()).toBe(true);
+  });
+
+  it("only once: after Not now the normal schedule applies", () => {
+    const { star, saved } = make();
+    star.noteUpdated();
+    star.offer();
+    star.notNow();
+    expect(saved().shows).toBe(1);
+    const again = new StarPromptController(
+      { getItem: () => JSON.stringify(saved()), setItem: () => {} },
+      { render: vi.fn(), openRepo: vi.fn(), now: () => T0 + DAY },
+    );
+    again.noteUpdated();
+    expect(again.offer()).toBe(false);
+  });
+
+  it("never after Don't show again", () => {
+    const done = { ...initialStarState(T0), done: "never" as const };
+    const { star } = make(done);
+    star.noteUpdated();
+    expect(star.offer()).toBe(false);
+  });
+
+  it("a fresh install still follows the normal rule", () => {
+    const { star } = make();
+    expect(star.offer()).toBe(false);
+  });
+
+  it("old saved records load without the flag", () => {
+    const old = JSON.stringify({ ...initialStarState(T0), updateAsk: undefined });
+    expect(loadStarState(old, T0).updateAsk).toBe(false);
+  });
+});
