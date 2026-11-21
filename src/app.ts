@@ -16,8 +16,11 @@ import { createResumeStore } from "./player/resume-store";
 import type { ShortcutAction } from "./player/shortcuts";
 import { srtToVtt, subtitleFormat } from "./player/subtitles";
 import { HomeView, type HomeActions } from "./ui/home";
+import { StarCard } from "./ui/star-card";
 import { UpdateToast } from "./ui/update-toast";
 import { PlayerView, type ViewActions } from "./ui/view";
+import { StarPromptController } from "./star/controller";
+import { STAR_URL } from "./star/schedule";
 import { UpdateController } from "./update/controller";
 import { takeWhatsNew } from "./update/whats-new";
 import changelog from "../CHANGELOG.md?raw";
@@ -72,6 +75,7 @@ export async function start(root: HTMLElement): Promise<void> {
       home.confirmClearHistory();
     },
     checkForUpdates: () => void updates?.check(true),
+    starOnGitHub: () => star.openFromMenu(),
   };
 
   const homeActions: HomeActions = {
@@ -91,7 +95,11 @@ export async function start(root: HTMLElement): Promise<void> {
   const updates = native
     ? new UpdateController(desktop.desktopUpdater, {
         currentVersion: APP_VERSION,
-        render: (state) => updateToast.render(state),
+        render: (state) => {
+          updateToast.render(state);
+          updateShown = state.kind !== "idle";
+          star.setCovered(updateShown || fullscreen);
+        },
         // The installer quits Glint, so save the position first.
         beforeInstall: () => player.persist(),
       })
@@ -102,13 +110,38 @@ export async function start(root: HTMLElement): Promise<void> {
     retry: () => updates?.retry(),
   });
 
+  // "Star Glint on GitHub": rare, after real use, never over the update card.
+  let updateShown = false;
+  let fullscreen = false;
+  const starCard = new StarCard({
+    star: () => star.star(),
+    notNow: () => star.notNow(),
+    never: () => star.never(),
+  });
+  const star = new StarPromptController(localStorage, {
+    render: (visible, preview) => starCard.render(visible, preview),
+    openRepo: () => void openProjectPage(),
+  });
+  // Hidden test shortcut: shows the card now, without saving any answer.
+  window.addEventListener("keydown", (event) => {
+    if (event.ctrlKey && event.shiftKey && event.altKey && event.code === "KeyS") {
+      event.preventDefault();
+      star.preview();
+    }
+  });
+
   const view = new PlayerView(root, actions, native);
-  root.append(updateToast.root);
+  root.append(updateToast.root, starCard.root);
   backend.attach(view.videoSlot);
   player = new PlayerController(backend, store, {
     onState: (state) => {
       view.render(state);
       updates?.setFullscreen(state.fullscreen);
+      fullscreen = state.fullscreen;
+      star.setCovered(updateShown || fullscreen);
+      star.notePlayback(state.playing && !state.buffering);
+      // A finished video is a calm moment to ask.
+      if (state.ended && !state.fullscreen) star.offer();
     },
     onFlash: (effect) => view.flash(effect),
     onTitle: (filename) => void setTitle(filename),
@@ -182,6 +215,8 @@ export async function start(root: HTMLElement): Promise<void> {
     void setTitle(null);
     renderHome();
     void refreshAvailability();
+    star.notePlayback(false);
+    star.offer();
     if (library.available && Date.now() - lastScan > RESCAN_AFTER_MS) void rescan();
   }
 
@@ -415,6 +450,18 @@ export async function start(root: HTMLElement): Promise<void> {
   async function quit(): Promise<void> {
     player.persist();
     if (native) await desktop.quit();
+  }
+
+  async function openProjectPage(): Promise<void> {
+    if (!native) {
+      window.open(STAR_URL, "_blank", "noopener");
+      return;
+    }
+    try {
+      await desktop.openProjectPage();
+    } catch {
+      home.toast("Couldn't open your browser. Glint is at github.com/Adham-ELtawil/glint");
+    }
   }
 
   async function setTitle(filename: string | null): Promise<void> {

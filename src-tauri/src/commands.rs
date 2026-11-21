@@ -210,3 +210,46 @@ pub fn media_url(state: State<'_, AppState>, path: String) -> Result<String, Str
     }
     state.media.register(&file)
 }
+
+/// Glint's GitHub page, opened by "Star on GitHub". Fixed here so the page
+/// can't ask Glint to open any other address.
+pub const PROJECT_URL: &str = "https://github.com/Adham-ELtawil/glint";
+
+/// Opens the project page in the default browser.
+#[tauri::command]
+pub fn open_project_page() -> Result<(), String> {
+    let mut child = browser_command(PROJECT_URL)
+        .spawn()
+        .map_err(|_| "Couldn't open your browser.".to_string())?;
+    // Reap the launcher so it never lingers as a zombie process.
+    std::thread::spawn(move || {
+        let _ = child.wait();
+    });
+    Ok(())
+}
+
+/// The system's own way of opening a web address in the default browser.
+fn browser_command(url: &str) -> std::process::Command {
+    #[cfg(windows)]
+    let program = "explorer";
+    #[cfg(target_os = "macos")]
+    let program = "open";
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let program = "xdg-open";
+    let mut command = std::process::Command::new(program);
+    command.arg(url);
+    command
+}
+
+#[cfg(test)]
+mod project_page_tests {
+    use super::*;
+
+    #[test]
+    fn opens_only_the_project_page() {
+        let command = browser_command(PROJECT_URL);
+        let args: Vec<_> = command.get_args().collect();
+        assert_eq!(args, [PROJECT_URL]);
+        assert!(PROJECT_URL.starts_with("https://github.com/"));
+    }
+}

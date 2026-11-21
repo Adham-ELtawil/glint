@@ -144,6 +144,11 @@ export async function quit(): Promise<void> {
   await getCurrentWindow().close();
 }
 
+/** Opens Glint's GitHub page in the default browser (the address is fixed in Rust). */
+export async function openProjectPage(): Promise<void> {
+  await invoke("open_project_page");
+}
+
 export function watchChrome(
   handler: (chrome: { fullscreen: boolean; theater: boolean }) => void,
 ): Promise<() => void> {
