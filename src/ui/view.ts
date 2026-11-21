@@ -34,6 +34,7 @@ export interface ViewActions {
   addFolder(): void;
   clearHistory(): void;
   checkForUpdates(): void;
+  starOnGitHub(): void;
 }
 
 /**
@@ -1128,6 +1129,11 @@ export class PlayerView {
           "",
           run(() => this.actions.checkForUpdates()),
           !this.nativeDrag,
+        ),
+        menuItem(
+          "Star Glint on GitHub",
+          "",
+          run(() => this.actions.starOnGitHub()),
         ),
         separator(),
         note,

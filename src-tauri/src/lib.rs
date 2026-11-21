@@ -82,6 +82,7 @@ pub fn run() {
             commands::save_thumbnail,
             commands::media_url,
             commands::ffmpeg_frame,
+            commands::open_project_page,
             #[cfg(desktop)]
             updates::check_update,
             #[cfg(desktop)]

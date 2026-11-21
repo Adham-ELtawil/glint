@@ -4,6 +4,10 @@ All notable changes to Glint are listed here. The format is based on [Keep a Cha
 
 ## [Unreleased]
 
+### Added
+
+- **Star Glint on GitHub.** After you've used Glint for a while (five days with at least two minutes of watching, and never in the first three days), a small card in the top-right corner asks if you'd like to star Glint on GitHub. It never shows during playback, in fullscreen, or together with an update card. **Not now** asks again only after 30 days and 10 more days of watching, at most three times in total (**×** and **Esc** work like **Not now**). **Don't show again** or **Star on GitHub** means it never asks again. There's also **Help → Star Glint on GitHub**. Everything stays on your computer; nothing is sent anywhere.
+
 ## [0.2.2] - 2026-11-17
 
 ### Added
