@@ -121,28 +121,28 @@ The **right-click menu** on the video has Open, Open subtitle, Play/Pause, and F
 
 ## Keyboard shortcuts
 
-| Key                   | Action                            |
-| --------------------- | --------------------------------- |
-| Space or K            | Play / pause                      |
-| Hold Space            | Play at 2x while held             |
-| Hold left mouse on video | Play at 2x while held        |
-| J / L                 | Back / forward 10 seconds         |
-| ← / →                 | Back / forward 5 seconds          |
-| ↑ / ↓                 | Volume up / down 5%               |
-| M                     | Mute / unmute                     |
-| 0–9                   | Jump to 0%–90% of the video       |
-| Home / End            | Jump to the start / end           |
-| `<` / `>` (Shift+,/.) | Slower / faster                   |
-| C                     | Captions on / off                 |
-| G / H                 | Subtitles 0.1 s earlier / later   |
-| F or double-click     | Fullscreen                        |
-| T                     | Theater mode                      |
-| Shift+N               | Next video in the folder          |
-| Esc                   | Close a menu, or leave fullscreen |
-| Backspace             | Go to the home screen             |
-| Ctrl+F or `/`         | Search Home                       |
-| Ctrl+O                | Open a video                      |
-| Ctrl+Q                | Quit                              |
+| Key                      | Action                            |
+| ------------------------ | --------------------------------- |
+| Space or K               | Play / pause                      |
+| Hold Space               | Play at 2x while held             |
+| Hold left mouse on video | Play at 2x while held             |
+| J / L                    | Back / forward 10 seconds         |
+| ← / →                    | Back / forward 5 seconds          |
+| ↑ / ↓                    | Volume up / down 5%               |
+| M                        | Mute / unmute                     |
+| 0–9                      | Jump to 0%–90% of the video       |
+| Home / End               | Jump to the start / end           |
+| `<` / `>` (Shift+,/.)    | Slower / faster                   |
+| C                        | Captions on / off                 |
+| G / H                    | Subtitles 0.1 s earlier / later   |
+| F or double-click        | Fullscreen                        |
+| T                        | Theater mode                      |
+| Shift+N                  | Next video in the folder          |
+| Esc                      | Close a menu, or leave fullscreen |
+| Backspace                | Go to the home screen             |
+| Ctrl+F or `/`            | Search Home                       |
+| Ctrl+O                   | Open a video                      |
+| Ctrl+Q                   | Quit                              |
 
 ## Supported formats
 
