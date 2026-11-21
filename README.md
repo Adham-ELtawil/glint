@@ -125,6 +125,7 @@ The **right-click menu** on the video has Open, Open subtitle, Play/Pause, and F
 | --------------------- | --------------------------------- |
 | Space or K            | Play / pause                      |
 | Hold Space            | Play at 2x while held             |
+| Hold left mouse on video | Play at 2x while held        |
 | J / L                 | Back / forward 10 seconds         |
 | ← / →                 | Back / forward 5 seconds          |
 | ↑ / ↓                 | Volume up / down 5%               |
