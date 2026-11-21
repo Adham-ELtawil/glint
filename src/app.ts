@@ -4,7 +4,9 @@ import "@fontsource/roboto/700.css";
 import { createHistoryStore, type HistoryEntry } from "./home/history-store";
 import { offlineLibrary, type FolderScan, type LibraryFolder } from "./home/library";
 import { buildHomeModel, pathKey, samePath } from "./home/model";
+import { createTagStore, suggestTags } from "./home/tags";
 import { ThumbnailService } from "./home/thumbnails";
+import { titleOf } from "./home/format";
 import { sourceFromItem } from "./model/media";
 import type { OpenedMedia, PlaylistItem } from "./model/media";
 import * as browser from "./platform/browser";
@@ -17,6 +19,7 @@ import type { ShortcutAction } from "./player/shortcuts";
 import { srtToVtt, subtitleFormat } from "./player/subtitles";
 import { HomeView, type HomeActions } from "./ui/home";
 import { StarCard } from "./ui/star-card";
+import { TagDialog } from "./ui/tag-dialog";
 import { UpdateToast } from "./ui/update-toast";
 import { PlayerView, type ViewActions } from "./ui/view";
 import { StarPromptController } from "./star/controller";
@@ -34,6 +37,9 @@ export async function start(root: HTMLElement): Promise<void> {
   const backend = createBackend();
   const store = createResumeStore(localStorage);
   const history = createHistoryStore(localStorage);
+  const tags = createTagStore(localStorage);
+  // The file in the player, for "Edit tags…" there. Null for a browser blob.
+  let playing: { path: string; filename: string } | null = null;
   const library = native ? desktop.desktopLibrary : offlineLibrary;
   const thumbs = new ThumbnailService(library);
   let folders: LibraryFolder[] = [];
@@ -76,6 +82,10 @@ export async function start(root: HTMLElement): Promise<void> {
     },
     checkForUpdates: () => void updates?.check(true),
     starOnGitHub: () => star.openFromMenu(),
+    editTags: () => {
+      if (playing) editTags(playing.path, playing.filename);
+    },
+    canEditTags: () => playing != null,
   };
 
   const homeActions: HomeActions = {
@@ -85,10 +95,12 @@ export async function start(root: HTMLElement): Promise<void> {
     removeFolder: (path) => void removeFolder(path),
     removeHistory: (id) => removeHistory(id),
     clearHistory: () => {
+      // Tags are the user's own organising, not history: they stay.
       history.clear();
       store.forgetAll();
       home.toast("Watch history cleared");
     },
+    editTags: (path, filename) => editTags(path, filename),
   };
 
   // Updates only exist in the desktop app; the browser build has no updater.
@@ -148,12 +160,17 @@ export async function start(root: HTMLElement): Promise<void> {
     onFullscreen: (on) => void applyFullscreen(on),
     onTheater: (on) => void applyTheater(on),
     onProgress: (id, position, duration) => history.progress(id, position, duration),
-    onSource: (source) => view.setPreviewSource(source),
+    onSource: (source) => {
+      playing = source.path ? { path: source.path, filename: source.filename } : null;
+      view.setPreviewSource(source);
+    },
   });
 
   const home = new HomeView(homeActions, thumbs);
   view.stage.append(home.root);
+  const tagDialog = new TagDialog(root);
   history.subscribe(() => renderHome());
+  tags.subscribe(() => renderHome());
   window.addEventListener("focus", () => {
     if (home.visible && Date.now() - lastScan > RESCAN_AFTER_MS) void rescan();
   });
@@ -201,7 +218,26 @@ export async function start(root: HTMLElement): Promise<void> {
         folders,
         scans,
         scanning,
+        tags: tags.snapshot(),
       }),
+    );
+  }
+
+  function editTags(path: string, filename: string): void {
+    home.closeOverlays();
+    const current = tags.get(path);
+    tagDialog.open(
+      {
+        title: titleOf(filename),
+        tags: current,
+        suggestions: suggestTags(filename, current),
+        known: tags.all().map((each) => each.tag),
+      },
+      (next) => {
+        const changed = JSON.stringify(current) !== JSON.stringify(next);
+        tags.set(path, next);
+        if (changed && home.visible) home.toast(next.length > 0 ? "Tags saved" : "Tags removed");
+      },
     );
   }
 

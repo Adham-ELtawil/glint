@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { matchTerms, searchItems, searchTerms } from "../src/home/search";
+import { filterByTag, matchTerms, searchItems, searchTerms, searchText } from "../src/home/search";
 
 const titles = (items: string[], query: string) => searchItems(items, query, (t) => t);
 
@@ -72,5 +72,27 @@ describe("searchItems", () => {
     const copy = [...items];
     titles(items, "cat dog");
     expect(items).toEqual(copy);
+  });
+});
+
+describe("search with tags", () => {
+  const items = [
+    { title: "GOPR0042", tags: ["Snowboarding", "Trip"] },
+    { title: "Beach day", tags: ["Family"] },
+    { title: "Snow trip", tags: [] as string[] },
+  ];
+  const text = (item: (typeof items)[number]) => searchText(item.title, item.tags);
+
+  it("matches a video by its tags as well as its title", () => {
+    expect(searchItems(items, "family", text).map((i) => i.title)).toEqual(["Beach day"]);
+    expect(searchItems(items, "snow trip", text).map((i) => i.title)).toEqual([
+      "GOPR0042",
+      "Snow trip",
+    ]);
+  });
+
+  it("filters by a tag, case-insensitively, keeping order", () => {
+    expect(filterByTag(items, "trip", (i) => i.tags).map((i) => i.title)).toEqual(["GOPR0042"]);
+    expect(filterByTag(items, null, (i) => i.tags)).toHaveLength(3);
   });
 });

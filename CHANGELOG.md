@@ -7,6 +7,7 @@ All notable changes to Glint are listed here. The format is based on [Keep a Cha
 ### Added
 
 - **Star Glint on GitHub.** After you've used Glint for a while (five days with at least two minutes of watching, and never in the first three days), a small card in the top-right corner asks if you'd like to star Glint on GitHub. It never shows during playback, in fullscreen, or together with an update card. **Not now** asks again only after 30 days and 10 more days of watching, at most three times in total (**×** and **Esc** work like **Not now**). **Don't show again** or **Star on GitHub** means it never asks again. There's also **Help → Star Glint on GitHub**. Everything stays on your computer; nothing is sent anywhere.
+- **Tags.** Right-click a video on Home, or the video that is playing, and choose **Edit tags…** to give it tags like Snowboarding, Trip or Family. Type them separated by commas, press **Enter** to add one, and click **×** to remove one. Glint suggests tags from the file name (it skips things like 1080p, x264 and the year) and offers the tags you already use. Tags show on the video's card, a row of tag chips under the search box filters Continue watching and your folders, and search finds videos by their tags too. Tags stay on your PC, and **Clear watch history** keeps them. Suggested by our community ([#19](https://github.com/Adham-ELtawil/glint/issues/19)).
 
 ## [0.2.2] - 2026-11-17
 

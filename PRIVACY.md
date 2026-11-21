@@ -1,6 +1,6 @@
 # Privacy policy
 
-Glint does not collect personal data, does not have accounts, and does not include ads, analytics, or telemetry. Your videos, watch history, thumbnails, and settings stay on your PC.
+Glint does not collect personal data, does not have accounts, and does not include ads, analytics, or telemetry. Your videos, watch history, tags, thumbnails, and settings stay on your PC.
 
 ## Network use
 
@@ -22,11 +22,11 @@ Glint installs for your user account and can be uninstalled from **Settings → 
 
 ## What stays on your PC
 
-- Saved positions, volume, mute, speed, and watch history (in Glint's WebView2 storage)
+- Saved positions, volume, mute, speed, watch history, and the tags you add (in Glint's WebView2 storage)
 - The list of home-screen folders, in `%APPDATA%\app.glint.player\library.json`
 - A thumbnail cache, in `%LOCALAPPDATA%\app.glint.player\thumbnails`
 
-**View → Clear watch history** removes history and saved positions. It does not delete your video files.
+**View → Clear watch history** removes history and saved positions. It keeps your tags and does not delete your video files.
 
 ## Third-party services
 
