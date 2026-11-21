@@ -53,6 +53,8 @@ export const FEEDBACK_HIDE_MS = 600;
  * at 2x until released, like YouTube's press-and-hold.
  */
 export const SPACE_HOLD_MS = 300;
+/** Holding the left mouse button on the video this long plays at 2x. */
+export const CLICK_HOLD_MS = 400;
 
 /** Transparent gap between chapter segments on the progress bar (YouTube uses 4px). */
 const CHAPTER_GAP_PX = 4;
@@ -79,6 +81,10 @@ export class PlayerView {
   private spaceDown = false;
   private spaceTimer = 0;
   private spaceBoosting = false;
+  private clickTimer = 0;
+  private clickBoosting = false;
+  /** The click that ends a hold must not also toggle play. */
+  private swallowClick = false;
   private boostPill!: HTMLElement;
   private convertPill!: HTMLElement;
   private convertTimer = 0;
@@ -468,7 +474,14 @@ export class PlayerView {
     this.player.dataset.phase = "empty";
     this.videoSlot = el("div", "video-slot");
     const gesture = el("div", "gesture");
-    gesture.addEventListener("click", () => this.actions.togglePlay());
+    gesture.addEventListener("pointerdown", (event) => this.onGestureDown(event));
+    gesture.addEventListener("click", () => {
+      if (this.swallowClick) {
+        this.swallowClick = false;
+        return;
+      }
+      this.actions.togglePlay();
+    });
     gesture.addEventListener("dblclick", (event) => {
       event.preventDefault();
       this.actions.toggleFullscreen();
@@ -739,6 +752,11 @@ export class PlayerView {
     window.addEventListener("keyup", (event) => this.onKeyUp(event), true);
     // A release that happens while the window is unfocused never arrives.
     window.addEventListener("blur", () => this.cancelSpace());
+    window.addEventListener("pointerup", (event) => {
+      if (event.button === 0) this.endClickHold(false);
+    });
+    window.addEventListener("pointercancel", () => this.endClickHold(true));
+    window.addEventListener("blur", () => this.endClickHold(true));
     // The mouse's back button goes home, like a browser's back.
     window.addEventListener("mouseup", (event) => {
       if (event.button !== 3 || this.homeActive) return;
@@ -909,6 +927,33 @@ export class PlayerView {
       this.spaceBoosting = false;
       this.actions.endBoost();
     }
+  }
+
+  /**
+   * Left button on the video: a click still toggles play/pause, while holding
+   * it past CLICK_HOLD_MS plays at 2x until release, like YouTube.
+   */
+  private onGestureDown(event: PointerEvent): void {
+    if (event.button !== 0 || this.state?.phase !== "ready") return;
+    this.swallowClick = false;
+    window.clearTimeout(this.clickTimer);
+    this.clickTimer = window.setTimeout(() => {
+      this.clickTimer = 0;
+      this.clickBoosting = true;
+      this.actions.startBoost();
+    }, CLICK_HOLD_MS);
+  }
+
+  /** Mouse released (or the press was interrupted): end a pending hold or boost. */
+  private endClickHold(cancelled: boolean): void {
+    if (this.clickTimer) {
+      window.clearTimeout(this.clickTimer);
+      this.clickTimer = 0;
+    }
+    if (!this.clickBoosting) return;
+    this.clickBoosting = false;
+    this.swallowClick = !cancelled;
+    this.actions.endBoost();
   }
 
   /** Focus lost mid-press: drop a pending tap and end any boost. */
