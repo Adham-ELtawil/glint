@@ -6,7 +6,7 @@ pub mod media_server;
 mod paths;
 pub mod playback;
 mod range;
-#[cfg(desktop)]
+#[cfg(all(desktop, feature = "self-update"))]
 mod updates;
 
 use std::sync::Mutex;
@@ -62,6 +62,10 @@ pub fn run() {
                 let _ = window.set_focus();
             }
         }));
+    }
+    // The Microsoft Store build leaves this out: the Store updates Glint.
+    #[cfg(all(desktop, feature = "self-update"))]
+    {
         builder = builder
             .plugin(tauri_plugin_updater::Builder::new().build())
             .manage(updates::PendingUpdate::default());
@@ -83,9 +87,9 @@ pub fn run() {
             commands::media_url,
             commands::ffmpeg_frame,
             commands::open_project_page,
-            #[cfg(desktop)]
+            #[cfg(all(desktop, feature = "self-update"))]
             updates::check_update,
-            #[cfg(desktop)]
+            #[cfg(all(desktop, feature = "self-update"))]
             updates::install_update
         ])
         .setup(|app| {

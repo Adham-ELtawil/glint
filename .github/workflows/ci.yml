@@ -61,6 +61,15 @@ jobs:
           cargo clippy --all-targets -- -D warnings
           cargo test
 
+      # The Microsoft Store build leaves Glint's own updater out.
+      - name: Rust lint and unit tests without the updater (Store build)
+        working-directory: src-tauri
+        env:
+          GLINT_STORE: "1"
+        run: |
+          cargo clippy --all-targets --no-default-features -- -D warnings
+          cargo test --no-default-features
+
       - name: Build the desktop binary without an installer
         run: npm run tauri build -- --no-bundle
 

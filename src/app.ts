@@ -1,6 +1,7 @@
 import "@fontsource/roboto/400.css";
 import "@fontsource/roboto/500.css";
 import "@fontsource/roboto/700.css";
+import { selfUpdates, storeUpdater } from "./distribution";
 import { createHistoryStore, type HistoryEntry } from "./home/history-store";
 import { offlineLibrary, type FolderScan, type LibraryFolder } from "./home/library";
 import { buildHomeModel, pathKey, samePath } from "./home/model";
@@ -34,6 +35,8 @@ const RESCAN_AFTER_MS = 15_000;
 
 export async function start(root: HTMLElement): Promise<void> {
   const native = desktop.isTauri();
+  // The Microsoft Store build has no updater of its own: the Store updates it.
+  const selfUpdate = selfUpdates(native);
   const backend = createBackend();
   const store = createResumeStore(localStorage);
   const history = createHistoryStore(localStorage);
@@ -80,7 +83,7 @@ export async function start(root: HTMLElement): Promise<void> {
       showHome();
       home.confirmClearHistory();
     },
-    checkForUpdates: () => void updates?.check(true),
+    checkForUpdates: selfUpdate ? () => void updates?.check(true) : undefined,
     starOnGitHub: () => star.openFromMenu(),
     editTags: () => {
       if (playing) editTags(playing.path, playing.filename);
@@ -104,8 +107,10 @@ export async function start(root: HTMLElement): Promise<void> {
   };
 
   // Updates only exist in the desktop app; the browser build has no updater.
+  // The Store build keeps the controller for the What's new card, but never
+  // checks: its updater commands are not even built in.
   const updates = native
-    ? new UpdateController(desktop.desktopUpdater, {
+    ? new UpdateController(selfUpdate ? desktop.desktopUpdater : storeUpdater, {
         currentVersion: APP_VERSION,
         render: (state) => {
           updateToast.render(state);
@@ -204,7 +209,7 @@ export async function start(root: HTMLElement): Promise<void> {
       star.noteUpdated();
       updates?.showWhatsNew(whatsNew.version, whatsNew.notes);
     }
-    updates?.scheduleAutoCheck();
+    if (selfUpdate) updates?.scheduleAutoCheck();
     const launch = await desktop.takeLaunchFiles();
     if (launch.length > 0) await openPaths(launch);
     else showHome();

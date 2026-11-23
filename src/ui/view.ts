@@ -33,7 +33,8 @@ export interface ViewActions {
   goHome(): void;
   addFolder(): void;
   clearHistory(): void;
-  checkForUpdates(): void;
+  /** Absent in the Microsoft Store build, which the Store updates. */
+  checkForUpdates?(): void;
   starOnGitHub(): void;
   /** Open the tag editor for the video that is playing. */
   editTags?(): void;
@@ -1174,13 +1175,18 @@ export class PlayerView {
       credit.className = "menu-note";
       credit.textContent =
         "Plays more formats with FFmpeg (ffmpeg.org), licensed under the LGPLv2.1.";
+      const checkForUpdates = this.actions.checkForUpdates?.bind(this.actions);
+      if (checkForUpdates) {
+        this.menu.append(
+          menuItem(
+            "Check for updates…",
+            "",
+            run(() => checkForUpdates()),
+            !this.nativeDrag,
+          ),
+        );
+      }
       this.menu.append(
-        menuItem(
-          "Check for updates…",
-          "",
-          run(() => this.actions.checkForUpdates()),
-          !this.nativeDrag,
-        ),
         menuItem(
           "Star Glint on GitHub",
           "",

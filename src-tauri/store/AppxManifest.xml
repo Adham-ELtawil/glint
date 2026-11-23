@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Package manifest for the Microsoft Store build of Glint (an MSIX package).
+  .github/workflows/store-msix.yml fills in {{VERSION}} from tauri.conf.json
+  and packs this with the release binaries and the logos in Assets/.
+
+  Identity, Publisher and PublisherDisplayName must match Partner Center's
+  Product identity page exactly (Store ID 9NM597MGMVJD). The Store signs the
+  package, so it is built unsigned.
+
+  MinVersion 10.0.17763.0 (Windows 10, version 1809) is older than build
+  19041, so the app uses EntryPoint instead of uap10:RuntimeBehavior:
+  https://learn.microsoft.com/windows/msix/desktop/desktop-to-uwp-manual-conversion
+-->
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap uap3 rescap">
+
+  <Identity
+    Name="AdhamEltawil.GlintVideoPlayer"
+    Publisher="CN=63ED1683-4804-4DAA-8DE3-FFFC10D581DA"
+    Version="{{VERSION}}"
+    ProcessorArchitecture="x64" />
+
+  <Properties>
+    <DisplayName>Glint Video Player</DisplayName>
+    <PublisherDisplayName>Adham Eltawil</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+    <Description>A fast video player with YouTube-style controls.</Description>
+  </Properties>
+
+  <Resources>
+    <Resource Language="en-us" />
+  </Resources>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+
+  <Applications>
+    <Application Id="Glint" Executable="glint.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements
+        DisplayName="Glint Video Player"
+        Description="Plays local videos with YouTube-style controls."
+        BackgroundColor="transparent"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png">
+        <uap:DefaultTile
+          ShortName="Glint"
+          Wide310x150Logo="Assets\Wide310x150Logo.png"
+          Square71x71Logo="Assets\Square71x71Logo.png"
+          Square310x310Logo="Assets\Square310x310Logo.png">
+          <uap:ShowNameOnTiles>
+            <uap:ShowOn Tile="square150x150Logo" />
+            <uap:ShowOn Tile="wide310x150Logo" />
+            <uap:ShowOn Tile="square310x310Logo" />
+          </uap:ShowNameOnTiles>
+        </uap:DefaultTile>
+      </uap:VisualElements>
+
+      <!--
+        "Open with" entries, the same formats as the regular installer
+        (tauri.conf.json fileAssociations and windows/hooks.nsh). Windows never
+        lets a packaged app make itself the default; the user picks it.
+      -->
+      <Extensions>
+        <uap3:Extension Category="windows.fileTypeAssociation">
+          <uap3:FileTypeAssociation Name="glint.mp4" Parameters="&quot;%1&quot;">
+            <uap:DisplayName>MP4 video</uap:DisplayName>
+            <uap:Logo>Assets\Square44x44Logo.png</uap:Logo>
+            <uap:SupportedFileTypes>
+              <uap:FileType ContentType="video/mp4">.mp4</uap:FileType>
+              <uap:FileType ContentType="video/mp4">.m4v</uap:FileType>
+            </uap:SupportedFileTypes>
+          </uap3:FileTypeAssociation>
+        </uap3:Extension>
+        <uap3:Extension Category="windows.fileTypeAssociation">
+          <uap3:FileTypeAssociation Name="glint.webm" Parameters="&quot;%1&quot;">
+            <uap:DisplayName>WebM video</uap:DisplayName>
+            <uap:Logo>Assets\Square44x44Logo.png</uap:Logo>
+            <uap:SupportedFileTypes>
+              <uap:FileType ContentType="video/webm">.webm</uap:FileType>
+            </uap:SupportedFileTypes>
+          </uap3:FileTypeAssociation>
+        </uap3:Extension>
+        <uap3:Extension Category="windows.fileTypeAssociation">
+          <uap3:FileTypeAssociation Name="glint.video" Parameters="&quot;%1&quot;">
+            <uap:DisplayName>Video file</uap:DisplayName>
+            <uap:Logo>Assets\Square44x44Logo.png</uap:Logo>
+            <uap:SupportedFileTypes>
+              <uap:FileType>.mkv</uap:FileType>
+              <uap:FileType>.mov</uap:FileType>
+              <uap:FileType>.avi</uap:FileType>
+              <uap:FileType>.wmv</uap:FileType>
+              <uap:FileType>.asf</uap:FileType>
+              <uap:FileType>.flv</uap:FileType>
+              <uap:FileType>.f4v</uap:FileType>
+              <uap:FileType>.ts</uap:FileType>
+              <uap:FileType>.m2ts</uap:FileType>
+              <uap:FileType>.mts</uap:FileType>
+              <uap:FileType>.mpg</uap:FileType>
+              <uap:FileType>.mpeg</uap:FileType>
+              <uap:FileType>.vob</uap:FileType>
+              <uap:FileType>.3gp</uap:FileType>
+              <uap:FileType>.ogv</uap:FileType>
+              <uap:FileType>.divx</uap:FileType>
+            </uap:SupportedFileTypes>
+          </uap3:FileTypeAssociation>
+        </uap3:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+</Package>

@@ -1,6 +1,7 @@
 /// <reference types="vitest/config" />
 import { defineConfig } from "vite";
 import process from "node:process";
+import { isStoreBuild } from "./src/build-flags.ts";
 
 const host = process.env.TAURI_DEV_HOST;
 
@@ -22,6 +23,10 @@ export default defineConfig({
     },
   },
   envPrefix: ["VITE_", "TAURI_ENV_*"],
+  // GLINT_STORE=1: the Microsoft Store build, without Glint's own updater.
+  define: {
+    __GLINT_STORE__: JSON.stringify(isStoreBuild(process.env.GLINT_STORE)),
+  },
   build: {
     target: "es2022",
     minify: "oxc",

@@ -1,0 +1,273 @@
+name: Microsoft Store package
+
+# Builds the MSIX package for the Microsoft Store (Glint Video Player, Store ID
+# 9NM597MGMVJD) and uploads it as a workflow artifact. Nothing is published:
+# download the artifact and upload it in Partner Center by hand. The Store
+# signs the package, so it is built unsigned.
+#
+# The Store build has no updater of its own (GLINT_STORE=1 and
+# --no-default-features); the Store installs updates. See
+# src-tauri/store/README.md.
+#
+# workflow_dispatch only shows up once this file is on the default branch, so
+# pushes to store/** branches build it too.
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "store/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: store-msix-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GLINT_STORE: "1"
+
+jobs:
+  msix:
+    name: Build and check the MSIX
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: store
+
+      - name: Read the version
+        run: |
+          $conf = Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json
+          $pkg = Get-Content package.json -Raw | ConvertFrom-Json
+          if ($conf.version -ne $pkg.version) {
+            Write-Error "tauri.conf.json ($($conf.version)) and package.json ($($pkg.version)) disagree."
+            exit 1
+          }
+          if ($conf.version -notmatch '^\d+\.\d+\.\d+$') {
+            Write-Error "The Store needs a plain major.minor.patch version, got $($conf.version)."
+            exit 1
+          }
+          # MSIX versions have four parts; the Store requires the last to be 0.
+          "VERSION=$($conf.version)" >> $env:GITHUB_ENV
+          "MSIX_VERSION=$($conf.version).0" >> $env:GITHUB_ENV
+
+      - name: Fetch the bundled FFmpeg
+        shell: bash
+        run: bash scripts/fetch-ffmpeg.sh
+
+      - run: npm ci
+      - run: npm test
+
+      - name: Rust unit tests (Store build, no updater)
+        working-directory: src-tauri
+        run: cargo test --no-default-features
+
+      # --no-bundle: Tauri does not make MSIX packages, so this only builds
+      # glint.exe (and copies ffmpeg.exe and ffprobe.exe next to it). The
+      # frontend build reads GLINT_STORE=1 and hides the updater; the cargo
+      # flag leaves tauri-plugin-updater out of the binary.
+      - name: Build Glint without the updater
+        shell: bash
+        run: npx tauri build --no-bundle -- --no-default-features
+
+      - name: Check the binary has no updater
+        run: |
+          $exe = "src-tauri/target/release/glint.exe"
+          if (-not (Test-Path $exe)) { Write-Error "Missing $exe"; exit 1 }
+          $text = [Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($exe))
+          # Crate names end up in the binary's panic locations when it is built in.
+          foreach ($needle in @("tauri-plugin-updater", "tauri_plugin_updater")) {
+            if ($text.Contains($needle)) { Write-Error "glint.exe still contains '$needle'"; exit 1 }
+          }
+          "glint.exe has no updater strings."
+
+      - name: Stage the package files
+        run: |
+          $release = "src-tauri/target/release"
+          $stage = "msix/stage"
+          New-Item -ItemType Directory -Force "$stage/licenses" | Out-Null
+          foreach ($file in @("glint.exe", "ffmpeg.exe", "ffprobe.exe")) {
+            if (-not (Test-Path "$release/$file")) { Write-Error "Missing $release/$file"; exit 1 }
+            Copy-Item "$release/$file" "$stage/$file"
+          }
+          Copy-Item src-tauri/licenses/* "$stage/licenses/"
+          Copy-Item LICENSE "$stage/licenses/Glint-LICENSE.txt"
+          Copy-Item THIRD_PARTY_NOTICES.md "$stage/licenses/THIRD_PARTY_NOTICES.md"
+          Copy-Item -Recurse src-tauri/store/Assets "$stage/Assets"
+          $manifest = (Get-Content src-tauri/store/AppxManifest.xml -Raw).Replace("{{VERSION}}", $env:MSIX_VERSION)
+          [IO.File]::WriteAllText((Join-Path (Resolve-Path $stage) "AppxManifest.xml"), $manifest, [Text.UTF8Encoding]::new($false))
+          Get-ChildItem -Recurse $stage | Where-Object { -not $_.PSIsContainer } | ForEach-Object {
+            "{0,12:N0}  {1}" -f $_.Length, $_.FullName.Substring((Resolve-Path $stage).Path.Length + 1)
+          }
+
+      - name: Find the Windows SDK tools
+        run: |
+          $bin = "${env:ProgramFiles(x86)}\Windows Kits\10\bin"
+          $dir = Get-ChildItem $bin -Directory |
+            Where-Object { $_.Name -match '^10\.' -and (Test-Path "$($_.FullName)\x64\makeappx.exe") } |
+            Sort-Object { [version]$_.Name } -Descending |
+            Select-Object -First 1
+          if (-not $dir) { Write-Error "No Windows SDK with makeappx.exe under $bin"; exit 1 }
+          "Windows SDK tools: $($dir.FullName)\x64"
+          "SDK_BIN=$($dir.FullName)\x64" >> $env:GITHUB_ENV
+
+      # resources.pri lets Windows pick the right logo size (scale-NNN,
+      # targetsize-NN, altform-unplated files in Assets).
+      - name: Index the logos (MakePri)
+        run: |
+          New-Item -ItemType Directory -Force msix/pri | Out-Null
+          & "$env:SDK_BIN\makepri.exe" createconfig /cf msix/pri/priconfig.xml /dq en-US /pv 10.0.0 /o
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & "$env:SDK_BIN\makepri.exe" new /pr msix/stage /cf msix/pri/priconfig.xml /mn msix/stage/AppxManifest.xml /of msix/stage/resources.pri /o
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      # MakeAppx checks the manifest against the MSIX schema while packing.
+      - name: Pack the MSIX (MakeAppx)
+        run: |
+          New-Item -ItemType Directory -Force out | Out-Null
+          $msix = "out/GlintVideoPlayer_${env:MSIX_VERSION}_x64.msix"
+          & "$env:SDK_BIN\makeappx.exe" pack /d msix/stage /p $msix /o
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "MSIX=$msix" >> $env:GITHUB_ENV
+          Get-Item $msix | Format-List Name, Length
+
+      - name: Check the package (unpack and read the manifest)
+        run: |
+          & "$env:SDK_BIN\makeappx.exe" unpack /p $env:MSIX /d msix/unpacked /o
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          [xml]$m = Get-Content msix/unpacked/AppxManifest.xml -Raw
+          $ns = New-Object Xml.XmlNamespaceManager $m.NameTable
+          $ns.AddNamespace("f", "http://schemas.microsoft.com/appx/manifest/foundation/windows10")
+          $ns.AddNamespace("uap", "http://schemas.microsoft.com/appx/manifest/uap/windows10")
+          $ns.AddNamespace("rescap", "http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities")
+          $id = $m.SelectSingleNode("/f:Package/f:Identity", $ns)
+          $expect = [ordered]@{
+            "Identity Name" = @($id.GetAttribute("Name"), "AdhamEltawil.GlintVideoPlayer")
+            "Identity Publisher" = @($id.GetAttribute("Publisher"), "CN=63ED1683-4804-4DAA-8DE3-FFFC10D581DA")
+            "Identity Version" = @($id.GetAttribute("Version"), $env:MSIX_VERSION)
+            "Architecture" = @($id.GetAttribute("ProcessorArchitecture"), "x64")
+            "PublisherDisplayName" = @($m.SelectSingleNode("/f:Package/f:Properties/f:PublisherDisplayName", $ns).InnerText, "Adham Eltawil")
+            "DisplayName" = @($m.SelectSingleNode("/f:Package/f:Properties/f:DisplayName", $ns).InnerText, "Glint Video Player")
+            "runFullTrust" = @($m.SelectSingleNode("//rescap:Capability", $ns).GetAttribute("Name"), "runFullTrust")
+          }
+          $bad = 0
+          foreach ($key in $expect.Keys) {
+            $got, $want = $expect[$key]
+            if ($got -ceq $want) { "ok    $key = $got" } else { "WRONG $key = '$got', expected '$want'"; $bad++ }
+          }
+          $types = $m.SelectNodes("//uap:FileType", $ns) | ForEach-Object { $_.InnerText }
+          "File types ($($types.Count)): $($types -join ' ')"
+          if ($types.Count -ne 19) { "WRONG file type count"; $bad++ }
+          foreach ($file in @("glint.exe", "ffmpeg.exe", "ffprobe.exe", "resources.pri", "Assets/StoreLogo.scale-100.png", "licenses/FFmpeg-LGPL-2.1.txt")) {
+            if (Test-Path "msix/unpacked/$file") { "ok    $file" } else { "MISSING $file"; $bad++ }
+          }
+          # glint.exe plus ffmpeg.exe and ffprobe.exe come to about 5 MB packed.
+          $size = (Get-Item $env:MSIX).Length
+          if ($size -lt 4500000) { "WRONG package is only $size bytes"; $bad++ }
+          if ($bad -gt 0) { Write-Error "$bad package check(s) failed"; exit 1 }
+
+      - name: Upload the MSIX
+        uses: actions/upload-artifact@v4
+        with:
+          name: glint-store-msix
+          path: out/*.msix
+          if-no-files-found: error
+          retention-days: 30
+
+      # The rest only tests the package on this runner. The Store signs the
+      # real one, so a throwaway certificate with the same publisher signs a
+      # copy here, just to install it.
+      - name: Sign a test copy
+        id: testsign
+        continue-on-error: true
+        run: |
+          $publisher = "CN=63ED1683-4804-4DAA-8DE3-FFFC10D581DA"
+          $cert = New-SelfSignedCertificate -Type Custom -Subject $publisher `
+            -KeyUsage DigitalSignature -FriendlyName "Glint Store test" `
+            -CertStoreLocation Cert:\CurrentUser\My `
+            -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3", "2.5.29.19={text}")
+          $pfxPass = ConvertTo-SecureString -String ([guid]::NewGuid().ToString()) -Force -AsPlainText
+          New-Item -ItemType Directory -Force msix/test | Out-Null
+          Export-PfxCertificate -Cert $cert -FilePath msix/test/test.pfx -Password $pfxPass | Out-Null
+          Export-Certificate -Cert $cert -FilePath msix/test/test.cer | Out-Null
+          Import-Certificate -FilePath msix/test/test.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople | Out-Null
+          Copy-Item $env:MSIX msix/test/glint-test.msix
+          $plain = [Runtime.InteropServices.Marshal]::PtrToStringBSTR([Runtime.InteropServices.Marshal]::SecureStringToBSTR($pfxPass))
+          & "$env:SDK_BIN\signtool.exe" sign /fd SHA256 /f msix/test/test.pfx /p $plain msix/test/glint-test.msix
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Install the test copy and start it
+        id: smoke
+        if: steps.testsign.outcome == 'success'
+        continue-on-error: true
+        run: |
+          Add-AppxPackage -Path msix/test/glint-test.msix
+          $pkg = Get-AppxPackage -Name AdhamEltawil.GlintVideoPlayer
+          if (-not $pkg) { Write-Error "Not installed"; exit 1 }
+          $pkg | Format-List Name, Version, PackageFamilyName, InstallLocation, SignatureKind
+          Start-Process "shell:AppsFolder\$($pkg.PackageFamilyName)!Glint"
+          Start-Sleep -Seconds 15
+          $running = Get-Process -Name glint -ErrorAction SilentlyContinue
+          $ffmpeg = Test-Path (Join-Path $pkg.InstallLocation "ffmpeg.exe")
+          "glint.exe running: $([bool]$running); ffmpeg.exe in the install folder: $ffmpeg"
+          $running | Stop-Process -Force -ErrorAction SilentlyContinue
+          if (-not $running) { Write-Error "Glint did not start from the package"; exit 1 }
+
+      # The Windows App Certification Kit runs the same kind of checks as Store
+      # certification. Not every runner image has it, so it is best effort.
+      - name: Windows App Certification Kit
+        id: wack
+        if: steps.testsign.outcome == 'success'
+        continue-on-error: true
+        timeout-minutes: 30
+        run: |
+          Get-AppxPackage -Name AdhamEltawil.GlintVideoPlayer | Remove-AppxPackage -ErrorAction SilentlyContinue
+          $appcert = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\App Certification Kit\appcert.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $appcert) { Write-Error "The App Certification Kit is not installed on this runner."; exit 1 }
+          $report = Join-Path (Resolve-Path msix/test) "wack-report.xml"
+          & $appcert.FullName reset
+          & $appcert.FullName test -appxpackagepath (Resolve-Path msix/test/glint-test.msix) -reportoutputpath $report
+          if (-not (Test-Path $report)) { Write-Error "No WACK report"; exit 1 }
+          [xml]$r = Get-Content $report -Raw
+          "Overall: $($r.REPORT.OVERALL_RESULT)"
+          foreach ($test in $r.SelectNodes("//TEST")) {
+            "{0,-6} {1}" -f $test.RESULT.'#cdata-section', $test.NAME
+          }
+          if ($r.REPORT.OVERALL_RESULT -ne "PASS") { exit 1 }
+
+      - name: Upload the test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: glint-store-checks
+          path: |
+            msix/test/wack-report.xml
+            msix/unpacked/AppxManifest.xml
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Summary
+        if: always()
+        run: |
+          @(
+            "## Glint Video Player $env:MSIX_VERSION (Microsoft Store MSIX)",
+            "",
+            "- Package: ``$env:MSIX`` (artifact **glint-store-msix**, unsigned; the Store signs it)",
+            "- Test install and start: **${{ steps.smoke.outcome }}**",
+            "- App Certification Kit: **${{ steps.wack.outcome }}**"
+          ) -join "`n" >> $env:GITHUB_STEP_SUMMARY
