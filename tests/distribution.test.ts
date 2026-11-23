@@ -16,15 +16,16 @@ describe("GLINT_STORE build variable", () => {
     expect(isStoreBuild("true")).toBe(false);
   });
 
-  it("the regular (test) build is not the Store build", () => {
-    expect(STORE_BUILD).toBe(false);
+  it("follows GLINT_STORE when the build is made", () => {
+    // The Store workflow runs the tests with GLINT_STORE=1 too.
+    expect(STORE_BUILD).toBe(isStoreBuild(process.env.GLINT_STORE));
   });
 
   it("only the regular desktop build updates itself", () => {
     expect(selfUpdates(true, false)).toBe(true);
     expect(selfUpdates(true, true)).toBe(false);
     expect(selfUpdates(false, false)).toBe(false);
-    expect(selfUpdates(true)).toBe(true);
+    expect(selfUpdates(true)).toBe(!STORE_BUILD);
   });
 });
 
