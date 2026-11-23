@@ -16,6 +16,10 @@ There is currently no setting to turn the automatic update check off.
 
 Glint does not contact any other internet service while you watch videos. Playback uses a local server on `127.0.0.1` only. The bundled FFmpeg tools are built with networking disabled and run as local helper programs.
 
+## Microsoft Store version
+
+Glint from the Microsoft Store (Glint Video Player) has no update check, so it makes no network requests on its own. The Microsoft Store installs its updates, under [Microsoft's privacy statement](https://www.microsoft.com/privacy). It keeps the same data in the same places listed below; Windows may store new files for it in the app's own package folder and removes them when you uninstall it.
+
 ## During installation
 
 Glint installs for your user account and can be uninstalled from **Settings → Apps → Installed apps**. If Microsoft Edge WebView2 is missing, the installer downloads it from Microsoft so Glint can draw its window. That component is Microsoft's software and is covered by [Microsoft's privacy statement](https://www.microsoft.com/privacy).
