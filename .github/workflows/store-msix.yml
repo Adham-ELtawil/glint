@@ -133,6 +133,12 @@ jobs:
           New-Item -ItemType Directory -Force msix/pri | Out-Null
           & "$env:SDK_BIN\makepri.exe" createconfig /cf msix/pri/priconfig.xml /dq en-US /pv 10.0.0 /o
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # One package holds every logo size, so keep them in one resources.pri
+          # instead of splitting per scale (that is for resource packages).
+          $config = (Resolve-Path msix/pri/priconfig.xml).Path
+          [xml]$cfg = Get-Content $config -Raw
+          foreach ($node in @($cfg.SelectNodes("//packaging"))) { $node.ParentNode.RemoveChild($node) | Out-Null }
+          $cfg.Save($config)
           & "$env:SDK_BIN\makepri.exe" new /pr msix/stage /cf msix/pri/priconfig.xml /mn msix/stage/AppxManifest.xml /of msix/stage/resources.pri /o
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
@@ -176,6 +182,8 @@ jobs:
           foreach ($file in @("glint.exe", "ffmpeg.exe", "ffprobe.exe", "resources.pri", "Assets/StoreLogo.scale-100.png", "licenses/FFmpeg-LGPL-2.1.txt")) {
             if (Test-Path "msix/unpacked/$file") { "ok    $file" } else { "MISSING $file"; $bad++ }
           }
+          $split = Get-ChildItem msix/unpacked -Filter "resources.*.pri"
+          if ($split) { "WRONG split resource files: $($split.Name -join ', ')"; $bad++ }
           # glint.exe plus ffmpeg.exe and ffprobe.exe come to about 5 MB packed.
           $size = (Get-Item $env:MSIX).Length
           if ($size -lt 4500000) { "WRONG package is only $size bytes"; $bad++ }
