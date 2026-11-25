@@ -16,6 +16,8 @@
 
 [![Download for Windows](https://img.shields.io/badge/Download%20for%20Windows-ff4d6d?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/Adham-ELtawil/glint/releases/latest)
 
+<a href="https://apps.microsoft.com/detail/9NM597MGMVJD"><img src="docs/ms-store-badge-dark.svg" width="200" height="55" alt="Download from the Microsoft Store" /></a>
+
 Free and open source · Windows 10 and 11 · about 5.6 MB
 
 <a href="https://alternativeto.net/software/glint-video-player/about/?utm_source=badge&utm_medium=referral"><img src="docs/alternativeto-badge.svg" width="183" height="59" alt="Glint Video Player | AlternativeTo" /></a>
@@ -58,6 +60,8 @@ Open a video and the same control bar, shortcuts, and animations you already kno
 ![Glint playing a video, with chapters, captions, and the control bar](docs/screenshot.png)
 
 ## Download and install
+
+Install Glint from the [Microsoft Store](https://apps.microsoft.com/detail/9NM597MGMVJD), or download the installer from GitHub:
 
 1. Go to the [latest release](https://github.com/Adham-ELtawil/glint/releases/latest) and download `Glint_<version>_x64-setup.exe` (about 5.6 MB). Glint runs on 64-bit Windows 10 and 11.
 2. Run it. Glint installs for your user account only, so it doesn't ask for administrator rights.
