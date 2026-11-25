@@ -159,3 +159,6 @@ details p { margin: 0; padding: 0 20px 18px; color: #c4c4c4; }
 
 .alt-badge{display:inline-block;margin:8px 0 4px}
 .alt-badge img{display:block;width:183px;height:59px}
+
+.ms-store-badge { display: inline-flex; align-items: center; line-height: 0; }
+.ms-store-badge img { display: block; height: 48px; width: auto; }
